@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create MomCare Account</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+ <style>
+      /* Sign-in button brand color */
+      #sign-btn { background-color: #104b0b; }
+      #sign-btn:hover { background-color: #5a8d25; }
+    </style>
+
+
+</head>
+
+<body class="h-full" style="background-color:#a6d6dc; font-family: 'Poppins', sans-serif;">
+
+  <main class="min-h-screen flex items-center justify-center px-24 py-5">
+    <div class="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-3 items-center">
+
+      <!-- Left: Logo / Illustration -->
+      <div class="hidden lg:flex items-left">
+        <img src="/images/momcare_logo_colored.png" alt="MomCare" class="max-w-xs" />
+      </div>
+
+      <!-- Right: Signup form -->
+      <div class="w-full flex items-start">
+        <div class="w-80 max-w-md">
+          <h2 class="text-xl lg:text-xll. text-[#104b0b] mb-6 text-center">Create your MomCare Account</h2>
+
+          <form action="#" method="POST" class="space-y-4 w-80">
+            <div>
+              <label class="sr-only" for="first">First Name</label>
+              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.2c-3.3 0-9.8 1.7-9.8 5v1.7h19.6V19.2c0-3.3-6.5-5-9.8-5z"/></svg>
+                <input id="first" name="first" type="text" placeholder="First Name" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label class="sr-only" for="last">Last Name</label>
+              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.2c-3.3 0-9.8 1.7-9.8 5v1.7h19.6V19.2c0-3.3-6.5-5-9.8-5z"/></svg>
+                <input id="last" name="last" type="text" placeholder="Last Name" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm text-[#104b0b] mb-2">Birth Date:</p>
+              <div class="flex gap-3">
+                <select name="day" class="rounded-xl px-4 py-3 bg-white text-[#104b0b]/50 hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                  <option>01</option>
+                  <option>02</option>
+                </select>
+                <select name="month" class="flex-1 rounded-xl px-4 py-3 bg-white text-[#104b0b]/50 hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                  <option>January</option>
+                  <option>February</option>
+                </select>
+                <select name="year" class="rounded-xl px-4 py-3 bg-white text-[#104b0b]/50 hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                  <option>1990</option>
+                  <option>1991</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="sr-only" for="email">Email</label>
+              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                <input id="email" name="email" type="email" placeholder="Email" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label class="sr-only" for="password">Password</label>
+              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z"/></svg>
+                <input id="password" name="password" type="password" placeholder="Password" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label class="sr-only" for="confirm">Confirm Password</label>
+              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z"/></svg>
+                <input id="confirm" name="confirm" type="password" placeholder="Confirm Password" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+              </div>
+            </div>
+
+             <div>
+          <button id="sign-btn" type="submit" class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Sign up</button>
+        </div>
+
+            <p class="text-center text-sm text-[#104b0b]">Already have an account? <a href="/" class="font-medium hover:text-[#5a8d25]">Sign in</a></p>
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>
