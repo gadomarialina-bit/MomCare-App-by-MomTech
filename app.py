@@ -1,8 +1,80 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
+import json
+from pathlib import Path
+import sqlite3
+from sqlite3 import Connection
+import os
+from datetime import datetime
 
 
 app = Flask(__name__, static_folder='images', static_url_path='/images')
+app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-production')
 
+
+DB_PATH = Path(__file__).parent / 'users.db'
+
+
+def get_db() -> Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    """Create users table if it doesn't exist, and migrate from users.json if present."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first TEXT NOT NULL,
+            last TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            birthdate TEXT,
+            password_hash TEXT NOT NULL,
+            gender TEXT,
+            height TEXT,
+            weight TEXT
+        )
+        """
+    )
+    conn.commit()
+
+    
+
+    # Migrate existing users from users.json if present
+    data_file = Path(__file__).parent / 'users.json'
+    if data_file.exists():
+        try:
+            with open(data_file, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+        except Exception:
+            users = []
+
+        if users:
+            for u in users:
+                try:
+                    cur.execute(
+                        "INSERT OR IGNORE INTO users (first, last, email, birthdate, password_hash) VALUES (?, ?, ?, ?, ?)",
+                        (u.get('first'), u.get('last'), u.get('email'), u.get('birthdate'), u.get('password_hash')),
+                    )
+                except Exception:
+                    # ignore individual insert errors
+                    pass
+            conn.commit()
+            # rename migrated file to keep a backup
+            try:
+                data_file.rename(data_file.with_suffix('.json.bak'))
+            except Exception:
+                pass
+
+    conn.close()
+
+
+
+init_db()
 
 
 @app.route('/')
@@ -10,11 +82,100 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/signup')
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if request.method == 'POST':
+        first = request.form.get('first', '').strip()
+        last = request.form.get('last', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        day = request.form.get('day', '')
+        month = request.form.get('month', '')
+        year = request.form.get('year', '')
+
+        # Basic validation
+        if not first or not last or not email or not password:
+            flash('Please fill in all required fields.')
+            return redirect(url_for('signup'))
+
+        if password != confirm:
+            flash('Passwords do not match.')
+            return redirect(url_for('signup'))
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if cur.fetchone():
+            conn.close()
+            flash('An account with that email already exists.')
+            return redirect(url_for('signup'))
+
+        password_hash = generate_password_hash(password)
+        birthdate = f"{day}-{month}-{year}"
+        try:
+            cur.execute(
+                "INSERT INTO users (first, last, email, birthdate, password_hash) VALUES (?, ?, ?, ?, ?)",
+                (first, last, email, birthdate, password_hash),
+            )
+            conn.commit()
+        except Exception:
+            flash('Unable to create account. Please try again.')
+            conn.close()
+            return redirect(url_for('signup'))
+        conn.close()
+
+        # simple session mark
+        session['user_email'] = email
+        session['user_first'] = first
+        flash('Account created successfully!')
+        return redirect(url_for('dashboard'))
+
     return render_template('signup.html')
 
 
 @app.route('/dashboard')
 def dashboard():
-    return render_template('dashboard.html')
+    first = session.get('user_first')
+    today = datetime.now().strftime('%B %d, %Y')
+    return render_template('dashboard.html', first=first, today=today)
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+
+    if not email or not password:
+        flash('Please provide both email and password.')
+        return redirect(url_for('index'))
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT first, password_hash FROM users WHERE email = ?', (email,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        flash('Invalid email or password.')
+        return redirect(url_for('index'))
+
+    first = row['first']
+    password_hash = row['password_hash']
+
+    if not check_password_hash(password_hash, password):
+        flash('Invalid email or password.')
+        return redirect(url_for('index'))
+
+    session['user_email'] = email
+    session['user_first'] = first
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_email', None)
+    session.pop('user_first', None)
+    flash('You have been signed out.')
+    return redirect(url_for('index'))
+
