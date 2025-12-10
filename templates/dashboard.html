@@ -11,16 +11,16 @@
 
 	<!-- Header -->
 	<header class="bg-green-900 text-white">
-		<div class="max-w-7xl mx-auto px-6 py-6">
+		<div class="max-w-7xl m-auto px-6 py-6">
 			<div class="flex items-center justify-between relative">
 				<div class="flex items-center gap-6">
 					<img src="/images/momcare_logo_white.png" alt="MomCare" class="h-16 w-auto" />
 					<div>
-						<h1 class="text-xl font-light">How are you today, {{ person }}!</h1>
-						<p class="mt-1 text-sm opacity-90">Today: November 2025</p>
+						<h1 class="text-l lg:text-xl font-light">How are you today, {{ first }}?</h1>
+						<p class="mt-1 text-xs lg:text-sm opacity-90">Today: {{ today }}</p>
 					</div>
 				</div>
-
+				
 				<button id="menu-toggle" class="p-3 md:p-2 rounded-md mr-2 focus:outline-none" aria-label="Open menu" aria-expanded="false" aria-controls="menu-list">
 					<svg class="h-8 w-8 text-[#ffcc48]" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
 				</button>
@@ -46,88 +46,56 @@
 						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Daily Tasks</a>
 						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Budget & Expenses</a>
 						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Mood & Wellness</a>
-						<a href="/" class="block px-3 py-2 rounded hover:bg-green-50">Sign out</a>
+						<a href="/logout" class="block px-3 py-2 rounded hover:bg-green-50">Sign out</a>
 					</nav>
 				</aside>
 			</div>
 		</div>
 	</header>
 
+
 	<main class="max-w-7xl mx-auto px-6 py-8">
-		<!-- Three cards -->
+		
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 			<!-- Card 1 -->
 			<div class="rounded-lg overflow-hidden bg-white shadow">
 				<div class="px-6 py-4 bg-[#ffcc48] text-center font-semibold text-white">Daily Task</div>
 				<div class="p-6">
-					<ul class="space-y-3 text-[#104b0b]">
-						<li>
-							<label class="flex items-center gap-3 cursor-pointer">
-								<input type="checkbox" data-index="0" class="task-checkbox h-5 w-5 accent-[#104b0b] rounded" />
-								<span class="task-label">task 1</span>
-							</label>
-						</li>
-						<li>
-							<label class="flex items-center gap-3 cursor-pointer">
-								<input type="checkbox" data-index="1" class="task-checkbox h-5 w-5 accent-[#104b0b] rounded" />
-								<span class="task-label">task 2</span>
-							</label>
-						</li>
-						<li>
-							<label class="flex items-center gap-3 cursor-pointer">
-								<input type="checkbox" data-index="2" class="task-checkbox h-5 w-5 accent-[#104b0b] rounded" />
-								<span class="task-label">task 3</span>
-							</label>
-						</li>
-					</ul>
-					<p id="progress" class="mt-4 text-sm text-[#104b0b]">Progress: 0%</p>
-					<div class="mt-6 text-center">
-						<button class="px-6 py-2 rounded-full bg-[#ffcc48] text-white font-medium">View All Task</button>
-					</div>
+					
+					<div class="mt-6 text-center"></div>
 				</div>
 			</div>
 
 			<!-- Card 2 -->
 			<div class="rounded-lg overflow-hidden bg-white shadow">
 				<div class="px-6 py-4 bg-[#fa990e] text-center font-semibold text-white">Budget & Expense</div>
-				<div class="p-6 text-[#104b0b]">
-					<p class="mb-3">Monthly Budget:</p>
-					<p class="mb-3">Total Spent:</p>
-					<p class="mb-3">Top Expense:</p>
-					<div class="mt-6 text-center">
-						<button class="px-6 py-2 rounded-full bg-[#fa990e] text-white font-medium">View Budget</button>
-					</div>
-				</div>
+				<div class="p-6 text-[#104b0b]"></div>
+				
 			</div>
 
 			<!-- Card 3 -->
 			<div class="rounded-lg overflow-hidden bg-white shadow">
 				<div class="px-6 py-4 bg-[#5a8d25] text-center font-semibold text-white">Mood &Wellness</div>
 				<div class="p-6 text-[#104b0b]">
-					<p class="mb-2">Mood Today:</p>
-					<p class="mb-2">Stress Level:</p>
-					<p class="mb-2">Wellness:</p>
-					<div class="mt-6 text-center">
-						<button class="px-6 py-2 rounded-full bg-[#5a8d25] text-white font-medium">Log Mood</button>
-					</div>
+				
 				</div>
+				
 			</div>
 		</div>
 
-		<!-- Snapshot panels -->
+	
 		<div class="space-y-6">
 			<div class="bg-white rounded-lg p-6 shadow text-[#104b0b]">Today's Snapshot:</div>
 
 			<div class="bg-white rounded-lg p-6 shadow flex flex-col md:flex-row md:items-center md:justify-between text-[#104b0b]">
-				<div>Task: <strong>3 Pending</strong></div>
-				<div class="md:text-center">Budget: <span class="underline">_______</span> remaining</div>
+				<div>Task:</div>
+				<div class="md:text-center">Budget remaining</div>
 				<div>Mood: </div>
 			</div>
 		</div>
 	</main>
 
 	<script>
-		// Off-canvas menu: open/close side menu with overlay, outside click, Escape
 		const toggle = document.getElementById('menu-toggle');
 		const sideMenu = document.getElementById('side-menu');
 		const overlay = document.getElementById('overlay');
@@ -162,63 +130,7 @@
 			});
 		}
 
-		// --- Task checklist logic ---
-		(function() {
-			const checkboxSelector = '.task-checkbox';
-			const progressEl = document.getElementById('progress');
-			const checkboxes = Array.from(document.querySelectorAll(checkboxSelector));
-			const storageKey = 'momcare_tasks_v1';
 
-			function loadState() {
-				try {
-					const raw = localStorage.getItem(storageKey);
-					if (!raw) return;
-					const arr = JSON.parse(raw);
-					checkboxes.forEach((cb, i) => {
-						cb.checked = !!arr[i];
-						toggleLabelState(cb);
-					});
-					updateProgress();
-				} catch (e) {
-					console.warn('Failed to load task state', e);
-				}
-			}
-
-			function saveState() {
-				const arr = checkboxes.map(cb => cb.checked);
-				localStorage.setItem(storageKey, JSON.stringify(arr));
-			}
-
-			function updateProgress() {
-				const total = checkboxes.length;
-				const done = checkboxes.filter(cb => cb.checked).length;
-				const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-				if (progressEl) progressEl.textContent = `Progress: ${pct}%`;
-			}
-
-			function toggleLabelState(cb) {
-				const label = cb.closest('label');
-				const text = label && label.querySelector('.task-label');
-				if (!text) return;
-				if (cb.checked) {
-					text.classList.add('line-through', 'text-gray-500');
-				} else {
-					text.classList.remove('line-through', 'text-gray-500');
-				}
-			}
-
-			checkboxes.forEach(cb => {
-				cb.addEventListener('change', () => {
-					toggleLabelState(cb);
-					updateProgress();
-					saveState();
-				});
-			});
-
-			// initialize
-			loadState();
-			updateProgress();
-		})();
 	</script>
 
 </body>
