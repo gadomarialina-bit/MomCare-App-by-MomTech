@@ -1,0 +1,375 @@
+from flask import Flask, render_template, redirect, url_for, request, session, g
+import sqlite3
+import os  # Imported for potential debugging, though not strictly required for logic
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
+app.secret_key = "momcare_secret_key"
+
+DATABASE = "momcare.db"
+
+# Profile Picture Configuration (PUT THE CODE HERE)
+# -------------------------------
+# app.py additions
+UPLOAD_FOLDER = 'static/profile_pics'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create the upload folder if it doesn't exist
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+# Helper function to check file extension
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# -------------------------------
+# Database Connection and Context
+# -------------------------------
+def get_db():
+    """Connects to the database and stores the connection in Flask's 'g' object."""
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(error):
+    """Closes the database connection at the end of the request."""
+    db = g.pop('db', None)
+    if db:
+        db.close()
+
+
+# -------------------------------
+# Initialize database (run once) - Finalized Schema
+# -------------------------------
+def init_db():
+    """Initializes the database table with standard, required columns."""
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    # Finalized Schema: Using 'password', 'birthdate', 'height', 'weight'
+    # to match typical form data names and simplify the SQL logic.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            birthdate TEXT,             
+            password TEXT NOT NULL,     
+            gender TEXT,
+            height INTEGER,             
+            weight INTEGER,
+            profile_pic TEXT           -- <<< NEW COLUMN HERE           
+        )
+    """)
+    db.commit()
+
+    # Insert a test user (ID 1) if the table is empty
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+            INSERT INTO users (first_name, last_name, email, password, birthdate, height, weight)
+            VALUES ('Christine', 'Caday', 'christinecaday@gmail.com', 'testpass', '1990-01-01', 173, 45)
+        """)
+        db.commit()
+
+    db.close()
+
+
+init_db()
+
+
+# -------------------------------
+# Helper for Profile Formatting (Fixes NameError)
+# -------------------------------
+def format_user_profile(user):
+    """Formats raw database user data for display in profile.html."""
+    if not user:
+        return None
+
+    user_data = dict(user)
+
+    # We still mask the password for display
+    user_data['password_display'] = '********'
+
+    # For display, use the raw data keys from the database
+    user_data['birthdate_display'] = user_data.get('birthdate')
+    user_data['height_display'] = user_data.get('height')
+    user_data['weight_display'] = user_data.get('weight')
+    user_data['profile_pic_url'] = user_data.get('profile_pic') or 'default_avatar.png'
+
+    return user_data
+
+
+# -------------------------------
+# AUTHENTICATION ROUTES
+# -------------------------------
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT id, password FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            return render_template('login.html', error="❌ Email not found")
+        if user['password'] != password:
+            return render_template('login.html', error="❌ Incorrect password")
+
+        session['user_id'] = user['id']
+        return redirect(url_for('dashboard'))
+
+    return render_template('index.html', error=None)
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        if not all([first_name, last_name, email, password]):
+            return render_template('signup.html', error="Please fill out all required fields.")
+
+        birthdate = request.form.get('birthdate')
+        gender = request.form.get('gender')
+        height_str = request.form.get('height')
+        weight_str = request.form.get('weight')
+
+        height = None
+        weight = None
+        try:
+            height = int(height_str) if height_str else None
+            weight = int(weight_str) if weight_str else None
+        except ValueError:
+            return render_template('signup.html', error="Height and Weight must be valid whole numbers.")
+
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        if cursor.fetchone():
+            return render_template('signup.html', error="Email already exists. Try logging in.")
+
+        try:
+            cursor.execute("""
+                INSERT INTO users (first_name, last_name, email, password, birthdate, gender, height, weight)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (first_name, last_name, email, password, birthdate, gender, height, weight))
+            db.commit()
+        except sqlite3.IntegrityError as e:
+            return render_template('signup.html', error=f"Database error during signup: {e}")
+
+        return redirect(url_for('login'))
+
+    return render_template('signup.html', error=None)
+
+
+@app.route('/dashboard')
+def dashboard():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    return render_template('dashboard.html', user_id=user_id)
+
+
+# -------------------------------
+# PROFILE ROUTES (The core functionality)
+# -------------------------------
+@app.route('/profile')
+def profile():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # CRITICAL: Get a fresh database connection
+    db = get_db()
+    cursor = db.cursor()
+
+    # CRITICAL: Retrieve ALL columns with the correct names
+    user = cursor.execute(
+        "SELECT id, first_name, last_name, email, birthdate, gender, height, weight FROM users WHERE id = ?",
+        (user_id,)).fetchone()
+
+    if not user:
+        session.clear()
+        return redirect(url_for('login'))
+
+    # Format the raw database row into display-friendly data
+    user_data = format_user_profile(user)
+
+    return render_template('profile.html', user=user_data)
+
+
+# --- End of profile route ---
+
+# -------------------------------
+# EDIT_PROFILE ROUTES OK
+# -------------------------------
+@app.route('/edit-profile', methods=['GET', 'POST'])
+def edit_profile():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    db = get_db()
+    cursor = db.cursor()
+
+    # Load user data for template rendering (GET and POST error cases)
+    user = cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        session.clear()
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+
+        # 🐛 DEBUGGING STEP: Print the entire form data received
+        print("\n--- FORM SUBMISSION DEBUG ---")
+        print("Data Received:", request.form)
+        print("-----------------------------\n")
+
+        # --- 1. Extract and Validate Form Data ---
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        email = request.form.get('email')
+        birthdate = request.form.get('birthdate')
+        gender = request.form.get('gender')
+        height_str = request.form.get('height')
+        weight_str = request.form.get('weight')
+
+        # Server-side validation for NOT NULL fields
+        if not first_name or not last_name or not email:
+            return render_template('edit.html', user=user, error="First Name, Last Name, and Email are required!")
+
+        # Convert optional number fields to INTEGER or None
+        height = None
+        weight = None
+        try:
+            height = int(height_str) if height_str else None
+            weight = int(weight_str) if weight_str else None
+        except ValueError:
+            return render_template('edit.html', user=user, error="Height and Weight must be valid whole numbers.")
+
+            # -------------------------------------------------------------
+            # <<< START FILE UPLOAD HANDLING (The code block you provided)
+            # -------------------------------------------------------------
+            profile_pic_filename = None
+
+            if 'profile_pic' in request.files:
+                file = request.files['profile_pic']
+
+                # Check if the user selected a file and if it's an allowed type
+                if file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    profile_pic_filename = filename  # Store only the filename in the database
+
+            # Get existing user data (to check for current profile pic path)
+            existing_user = cursor.execute("SELECT profile_pic FROM users WHERE id = ?", (user_id,)).fetchone()
+
+            # Use the new filename, or keep the old one if no new file was uploaded
+            final_profile_pic = profile_pic_filename if profile_pic_filename else existing_user['profile_pic']
+        # --- 2. Update Database ---
+        try:
+            cursor.execute("""
+                UPDATE users SET
+                    first_name = ?, 
+                    last_name = ?, 
+                    email = ?, 
+                    birthdate = ?, 
+                    gender = ?, 
+                    height = ?, 
+                    weight = ?
+                WHERE id = ?
+            """, (
+                first_name,
+                last_name,
+                email,
+                birthdate,
+                gender,
+                height,
+                weight,
+                user_id
+            ))
+            db.commit()
+            # If commit is successful, redirect to profile to see changes
+            return redirect(url_for('profile'))
+        except sqlite3.IntegrityError as e:
+            return render_template('edit.html', user=user,
+                                   error=f"Error: Email already exists or data is invalid. ({e})")
+        except Exception as e:
+            print(f"Update failed with general error: {e}")
+            return render_template('edit.html', user=user, error="An unexpected error occurred during update.")
+
+    # GET Request: Renders the edit form
+    return render_template('edit.html', user=user, error=None)
+
+
+# --- End of the edit_profile function block ---
+
+@app.route('/tasks')
+def tasks():
+    return render_template('dailytasks.html')
+
+@app.route('/budget')
+def budget():
+    return render_template('budgetexpense.html')
+
+@app.route('/mood')
+def mood():
+    return render_template('moodwellness.html')
+# -------------------------------
+# FORGOT PASSWORD
+# -------------------------------
+@app.route('/forgotpassword', methods=['GET', 'POST'])
+def forgot_password():
+    message = ""
+    if request.method == 'POST':
+        email = request.form['email']
+        new_password = request.form['new_password']
+
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+
+        if user:
+            cursor.execute("UPDATE users SET password = ? WHERE email = ?", (new_password, email))
+            db.commit()
+            message = "Password updated successfully! You can now log in."
+        else:
+            message = "Email not found!"
+
+    return render_template('forgotpassword.html', message=message)
+
+
+# -------------------------------
+# LOGOUT
+# -------------------------------
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+# -------------------------------
+# RUN APP
+# -------------------------------
+if __name__ == '__main__':
+    app.run(debug=True)
