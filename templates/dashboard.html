@@ -3,11 +3,10 @@
 <head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>MomCare Dashboard</title>
+	<title>MomCare Dashboard</title>
 		<script src="https://cdn.tailwindcss.com"></script>
-</head>
-
-<body class="h-full" style="background-color:#a6d6dc; font-family: 'Poppins', sans-serif;">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	</head><body class="h-full" style="background-color:#a6d6dc; font-family: 'Poppins', sans-serif;">
 
 	<!-- Header -->
 	<header class="bg-green-900 text-white">
@@ -41,12 +40,30 @@
 						</button>
 					</div>
 					<nav class="px-4 py-6 space-y-2">
-						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">My Account</a>
-						<a href="/dashboard" class="block px-3 py-2 rounded hover:bg-green-50">Dashboard</a>
-						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Daily Tasks</a>
-						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Budget & Expenses</a>
-						<a href="#" class="block px-3 py-2 rounded hover:bg-green-50">Mood & Wellness</a>
-						<a href="/logout" class="block px-3 py-2 rounded hover:bg-green-50">Sign out</a>
+						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-user text-green-900"></i>
+							<span>My Account</span>
+						</a>
+						<a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-chart-line text-green-900"></i>
+							<span>Dashboard</span>
+						</a>
+						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-tasks text-green-900"></i>
+							<span>Daily Tasks</span>
+						</a>
+						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-wallet text-green-900"></i>
+							<span>Budget & Expenses</span>
+						</a>
+						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-heart text-green-900"></i>
+							<span>Mood & Wellness</span>
+						</a>
+						<a href="/logout" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+							<i class="fas fa-sign-out-alt text-green-900"></i>
+							<span>Sign out</span>
+						</a>
 					</nav>
 				</aside>
 			</div>
@@ -106,7 +123,6 @@
 			sideMenu.setAttribute('aria-hidden', 'false');
 			overlay.classList.remove('hidden');
 			toggle.setAttribute('aria-expanded', 'true');
-			// optional: trap focus
 		}
 
 		function closeSideMenu() {

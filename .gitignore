@@ -1,0 +1,58 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+venv/
+
+# Flask instance folder (contains config, secrets)
+instance/
+
+# Environment variables
+.env
+.env.*
+
+# Database files
+*.sqlite3
+*.db
+
+# Testing
+.pytest_cache/
+.tox/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checkers
+.mypy_cache/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+
+# Misc
+.python-version
+*.pot
+*.mo
