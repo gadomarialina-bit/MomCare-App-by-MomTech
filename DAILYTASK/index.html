@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MomCare Daily Planner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2 id="modalTitle">Add New Task</h2>
+        <form id="taskForm">
+            <input type="hidden" id="taskId">
+
+            <label for="taskName">Task Name:</label>
+            <input type="text" id="taskName" required><br><br>
+
+            <label for="startTime">Start Time (Hour 0-23):</label>
+            <input type="number" id="startTime" min="0" max="23" value="9" required><br><br>
+
+            <label for="duration">Duration (Hours):</label>
+            <input type="number" id="duration" min="0.5" step="0.5" value="1" required><br><br>
+
+            <label for="taskColor">Task Color:</label>
+            <select id="taskColor">
+                <option value="orange">Orange (General)</option>
+                <option value="green">Green (Activity)</option>
+                <option value="yellow-green">Yellow-Green (School)</option>
+            </select><br><br>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <input type="checkbox" id="isPriority" style="width: auto; margin: 0;">
+                <label for="isPriority" style="margin-bottom: 0;">Mark as Priority</label>
+            </div>
+
+            <button type="submit" id="saveTaskButton">Save Task</button>
+        </form>
+    </div>
+</div>
+
+<div class="main-container">
+    <header class="header">
+
+        <div class="app-logo">
+            <img id="momcareLogo" src="momcare.PNG" alt="MomCare Logo">
+            <div class="logo-text"></div>
+        </div>
+
+        <div class="header-content">
+            <h1>Slay your day Mommy!</h1>
+            <p>Today: <span id="currentDateDisplay"></span></p>
+        </div>
+
+        <div class="menu-icon">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+    </header>
+
+    <main class="content-area">
+
+        <div class="sidebar">
+
+            <div class="card add-task-card" id="addTaskBtn">
+                <i class="fas fa-plus icon-plus"></i>
+                <span>Add task</span>
+            </div>
+
+            <div class="calendar-card">
+                <div class="card-header calendar-header-nav">
+                    <button id="prevMonthBtn" class="nav-btn">&lt;</button>
+                    <h2 id="currentMonthDisplay"></h2>
+                    <button id="nextMonthBtn" class="nav-btn">&gt;</button>
+                </div>
+                <p class="status">Work in Progress</p>
+                <div class="date-grid" id="calendarGrid">
+                </div>
+            </div>
+
+            <div class="edit-delete-buttons">
+                <div class="action-btn edit-btn" id="editTaskBtn">
+                    <i class="fas fa-pencil-alt"></i>
+                    <span>Edit Selected Task</span>
+                </div>
+                <div class="action-btn delete-btn" id="deleteSelectedTaskBtn">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Delete Selected Task</span>
+                </div>
+            </div>
+
+            <div class="card reminder-card">
+                <h3>Reminder:</h3>
+                <p>Meeting with Doctor at 3 PM.</p>
+            </div>
+
+            <div class="card priority-card">
+                <i class="fas fa-hand-paper icon-priority"></i>
+                <span>Priority</span>
+                <ul id="priorityList">
+                </ul>
+            </div>
+
+            <div class="card task-done-card">
+                <i class="fas fa-check-square icon-done"></i>
+                <span>Task Done</span>
+                <p id="taskDoneCount">0 Tasks Completed</p>
+            </div>
+
+        </div>
+
+        <div class="schedule-area">
+            <div class="schedule-header">Schedule</div>
+            <div class="timeline" id="timelineGrid">
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

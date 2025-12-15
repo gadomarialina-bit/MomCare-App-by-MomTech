@@ -1,0 +1,508 @@
+/* General Resets and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+:root {
+    --color-primary-dark: #104b0b; /* Dark blue/slate for headers */
+    --color-primary-light: #a5dbe5; /* Light background */
+    --color-secondary:  #5a8d26; /* Accent blue for buttons/links */
+    --color-text-dark: #333;
+    --color-text-light: #fff;
+
+    /* Task Colors */
+    --color-orange: #ff9800; /* General */
+    --color-green: #4caf50; /* Activity */
+    --color-yellow-green: #fecc47; /* School */
+    --color-red-accent: #ba3905; /* Danger/Delete */
+}
+
+body {
+    background-color: var(--color-primary-light);
+    color: var(--color-text-dark);
+    line-height: 1.6;
+}
+
+/* --- Layout Structure --- */
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* --- Header Styling (Unchanged) --- */
+.header {
+    background-color: var(--color-primary-dark);
+    color: var(--color-text-light);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* LEFT SIDE: Container for Logo and App Name */
+.app-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#momcareLogo {
+    width: 100px;
+    height: 100px;
+    border-radius: 70%;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--color-yellow-green);
+}
+
+/* MIDDLE/RIGHT SIDE: Container for Slogan and Date */
+.header-content {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex-grow: 1;
+    padding: 0 20px;
+}
+
+.header-content h1 {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.header-content p {
+    opacity: 0.8;
+}
+
+.menu-icon {
+    cursor: pointer;
+}
+
+.bar {
+    width: 50px;
+    height: 3px;
+    background-color: #fecc47;
+    margin: 5px 0;
+    transition: 0.4s;
+}
+
+/* Main Content Area */
+.content-area {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px 40px;
+    gap: 20px;
+}
+
+/* --- Sidebar Styling (Updated for Flex Ratio) --- */
+.sidebar {
+    flex: 1; /* Takes 1 part of the available space */
+    min-width: 250px; /* Prevents it from getting too small */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Add Task Card */
+.add-task-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--color-secondary);
+    color: var(--color-text-light);
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.add-task-card:hover {
+    background-color: #a3d873;
+}
+
+.icon-plus {
+    font-size: 1.2rem;
+}
+
+/* Calendar Card */
+.calendar-card {
+    padding: 10px;
+}
+
+.calendar-header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.calendar-header-nav h2 {
+    font-size: 1.2rem;
+}
+
+.calendar-card .nav-btn {
+    background: none;
+    border: 1px solid var(--color-primary-dark);
+    color: var(--color-primary-dark);
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.calendar-card .status {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-red-accent);
+    margin-bottom: 10px;
+}
+
+.date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+}
+
+.day-label {
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: var(--color-primary-dark);
+    margin-bottom: 5px;
+}
+
+.date-number {
+    padding: 8px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.date-number:hover {
+    background-color: #eee;
+}
+
+.date-number.active-date {
+    background-color: var(--color-secondary, #a5ed39);
+    color: var(--color-text-light);
+    font-weight: bold;
+}
+
+.date-number.has-task {
+    border: 2px solid var(--color-orange); /* Simple indicator for tasks */
+}
+
+
+/* Edit/Delete Buttons */
+.edit-delete-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.edit-btn {
+    background-color: var(--color-yellow-green);
+    color: var(--color-primary-dark);
+}
+
+.edit-btn:hover {
+    background-color: #a4b333;
+}
+
+.delete-btn {
+    background-color: var(--color-red-accent);
+    color: var(--color-text-light);
+}
+
+.delete-btn:hover {
+    background-color: #c62828;
+}
+
+/* Reminder and Priority Cards */
+.reminder-card h3, .priority-card span, .task-done-card span {
+    color: var(--color-primary-dark);
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.priority-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.icon-priority {
+    font-size: 1.5rem;
+    color: var(--color-orange);
+    margin-bottom: 10px;
+}
+
+.priority-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.priority-card li {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.95rem;
+}
+
+/* Task Done Card */
+.task-done-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.icon-done {
+    font-size: 2rem;
+    color: var(--color-green);
+    margin-bottom: 10px;
+}
+
+#taskDoneCount {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--color-primary-dark);
+}
+
+/* --- Schedule Area (Updated for Flex Ratio) --- */
+
+.schedule-area {
+    flex: 2; /* Takes 2 parts of the available space (twice the sidebar) */
+    min-width: 300px; /* Prevents schedule from being unusable on large screens if sidebar is too small */
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-header {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    text-align: center;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.timeline {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    grid-template-rows: repeat(28, 30px);
+    position: relative;
+    overflow-y: auto;
+    height: calc(100vh - 250px);
+    padding: 10px 0;
+}
+
+/* Timeline grid lines for the task area */
+.timeline::before {
+    content: '';
+    grid-column: 2 / 3;
+    grid-row: 1 / span 28;
+    background-image: linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+    background-size: 100% 30px;
+    position: sticky;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+}
+
+/* Time Slot/Label Styling */
+.time-slot {
+    grid-column: 1 / 2;
+    text-align: right;
+    padding-right: 10px;
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: bold;
+    align-self: start;
+    transform: translateY(-50%);
+    z-index: 5;
+}
+
+/* Task Bar Styling */
+.task-bar {
+    grid-column: 2 / 3;
+    z-index: 10;
+    margin-left: 5px;
+    margin-top: 1px;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 0.9rem;
+    color: white;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: outline 0.2s, box-shadow 0.2s;
+}
+
+/* Task Bar Colors */
+.task-bar.orange { background-color: var(--color-orange); }
+.task-bar.green { background-color: var(--color-green); }
+.task-bar.yellow-green { background-color: var(--color-yellow-green); color: var(--color-primary-dark); }
+
+/* Task States */
+.task-bar.selected-for-edit {
+    outline: 3px dashed var(--color-secondary, #a5ed39);
+    outline-offset: -3px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.task-bar.priority-task::before {
+    content: "\f005"; /* Star icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    margin-right: 5px;
+    color: #fff;
+}
+.task-bar.yellow-green.priority-task::before {
+    color: var(--color-primary-dark);
+}
+
+
+/* --- Modal Styling --- */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#taskForm label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#taskForm input[type="text"],
+#taskForm input[type="number"],
+#taskForm select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#taskForm input[type="checkbox"] {
+    width: auto;
+    margin-top: 0;
+}
+
+#taskForm button {
+    background-color: var(--color-secondary);
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+#taskForm button:hover {
+    background-color: #0056b3;
+}
+
+/* --- Media Queries for Responsiveness --- */
+@media (max-width: 1024px) {
+    .content-area {
+        padding: 20px;
+    }
+
+    /* Adjust flex ratio for smaller screens if necessary, though 1:2 is often fine */
+    .sidebar {
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 15px 20px;
+    }
+
+    .content-area {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .sidebar {
+        width: 100%; /* Full width on small screens */
+        flex: auto;
+        order: 2;
+    }
+
+    .schedule-area {
+        width: 100%; /* Full width on small screens */
+        flex: auto;
+        order: 1;
+        min-height: 500px;
+    }
+}
