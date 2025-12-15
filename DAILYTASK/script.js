@@ -36,13 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     // --- Core Data Storage ---
-    // Tasks are stored with a 'dateKey' (YYYY-MM-DD)
-    let tasks = JSON.parse(sessionStorage.getItem('momcareTasks')) || [
-        // Default tasks for the initial selected day (today)
-        { id: 1, name: 'Breakfast', start: 8, duration: 1, color: 'orange', dateKey: getISODate(selectedDate), isPriority: false },
-        { id: 2, name: 'Go to school!', start: 10, duration: 1, color: 'yellow-green', dateKey: getISODate(selectedDate), isPriority: true },
-        { id: 3, name: 'Pick up groceries', start: 16, duration: 0.5, color: 'orange', dateKey: getISODate(selectedDate), isPriority: true },
-    ];
+    // Tasks are fetched from the server API. Client maintains an in-memory array for rendering.
+    let tasks = [];
 
     // --- Helper Functions ---
 
@@ -55,8 +50,51 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${year}-${month}-${day}`;
     }
 
-    const saveTasks = () => {
-        sessionStorage.setItem('momcareTasks', JSON.stringify(tasks));
+    const saveTasks = async (task) => {
+        // sync a single task with the server when called from add/edit flows
+        // This function is kept for compatibility but main create/update flows call the API directly.
+        return;
+    };
+
+    // Check if a new/edited task overlaps existing tasks on the same date
+    const isOverlapping = (dateKey, start, duration, excludeId = null) => {
+        if (!Number.isFinite(start) || !Number.isFinite(duration)) return false;
+        const newStart = parseFloat(start);
+        const newEnd = newStart + parseFloat(duration);
+
+        return tasks.some(t => {
+            if (excludeId && t.id === excludeId) return false;
+            if (t.dateKey !== dateKey) return false;
+            const tStart = Number(t.start);
+            const tDuration = Number(t.duration);
+            if (!Number.isFinite(tStart) || !Number.isFinite(tDuration)) return false;
+            const tEnd = tStart + tDuration;
+            // overlap if intervals intersect
+            return (newStart < tEnd) && (tStart < newEnd);
+        });
+    };
+
+    // Fetch tasks from server for the signed-in user
+    const loadTasksFromServer = async () => {
+        try {
+            const res = await fetch('/api/tasks');
+            if (!res.ok) throw new Error('Failed to load tasks');
+            const data = await res.json();
+            // Adapt server shape to client fields
+            tasks = data.map(t => ({
+                id: t.id,
+                name: t.title,
+                start: t.start_time === null ? 9 : parseFloat(t.start_time),
+                duration: t.duration === null ? 1 : parseFloat(t.duration),
+                color: t.color || 'orange',
+                dateKey: t.task_date || getISODate(selectedDate),
+                isPriority: !!t.is_priority,
+                completed: !!t.completed
+            }));
+        } catch (e) {
+            console.error('Could not load tasks:', e);
+            tasks = [];
+        }
     };
 
 
@@ -259,37 +297,57 @@ document.addEventListener('DOMContentLoaded', () => {
     taskForm.onsubmit = (event) => {
         event.preventDefault();
 
-        const id = taskIdInput.value ? parseInt(taskIdInput.value) : null;
-        const name = taskNameInput.value.trim();
-        const start = parseFloat(startTimeInput.value);
-        const duration = parseFloat(durationInput.value);
-        const color = taskColorInput.value;
-        const isPriority = isPriorityInput.checked;
+        (async () => {
+            const id = taskIdInput.value ? parseInt(taskIdInput.value) : null;
+            const name = taskNameInput.value.trim();
+            const start = parseFloat(startTimeInput.value);
+            const duration = parseFloat(durationInput.value);
+            const color = taskColorInput.value;
+            const isPriority = isPriorityInput.checked;
 
-        if (start < 8 || (start + duration) > 22) {
-            alert('Task time must be between 8:00 AM and 10:00 PM.');
-            return;
-        }
-
-        const taskData = { name, start, duration, color, isPriority, dateKey: getISODate(selectedDate) };
-
-        if (id) {
-            // EDIT existing task
-            const index = tasks.findIndex(t => t.id === id);
-            if (index !== -1) {
-                tasks[index] = { ...tasks[index], ...taskData };
+            if (start < 8 || (start + duration) > 22) {
+                alert('Task time must be between 8:00 AM and 10:00 PM.');
+                return;
             }
-        } else {
-            // ADD new task
-            const newId = Date.now();
-            tasks.push({ id: newId, ...taskData });
-        }
 
-        tasks.sort((a, b) => a.start - b.start);
-        saveTasks();
-        renderCalendar();
-        renderTimeline();
-        taskModal.style.display = 'none';
+            const payload = {
+                title: name,
+                start_time: start,
+                duration: duration,
+                color: color,
+                is_priority: isPriority,
+                task_date: getISODate(selectedDate)
+            };
+
+            // Client-side overlap validation
+            if (isOverlapping(payload.task_date, start, duration, id)) {
+                alert('This task overlaps an existing task. Please choose a different time.');
+                return;
+            }
+
+            try {
+                if (id) {
+                    // update
+                    await fetch(`/api/tasks/${id}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                    });
+                } else {
+                    // create
+                    const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const newTask = await res.json();
+                    // assign server id
+                    payload.id = newTask.id;
+                }
+
+                await loadTasksFromServer();
+                renderCalendar();
+                renderTimeline();
+                taskModal.style.display = 'none';
+            } catch (e) {
+                console.error('Failed to save task', e);
+                alert('Unable to save task. Are you signed in?');
+            }
+        })();
     };
 
     // Delete Selected Task
@@ -299,15 +357,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (confirm('Are you sure you want to delete the selected task?')) {
-            // Filter out the selected task
-            tasks = tasks.filter(task => task.id !== selectedTaskId);
+        if (!confirm('Are you sure you want to delete the selected task?')) return;
 
-            selectedTaskId = null; // Clear selection
-            saveTasks();
-            renderCalendar();
-            renderTimeline();
-        }
+        (async () => {
+            try {
+                const res = await fetch(`/api/tasks/${selectedTaskId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('delete failed');
+                selectedTaskId = null;
+                await loadTasksFromServer();
+                renderCalendar();
+                renderTimeline();
+            } catch (e) {
+                console.error('Delete failed', e);
+                alert('Unable to delete task.');
+            }
+        })();
     };
 
     // Calendar Navigation
@@ -323,6 +387,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Initialization ---
-    renderCalendar();
-    renderTimeline();
+    (async () => {
+        await loadTasksFromServer();
+        renderCalendar();
+        renderTimeline();
+    })();
 });

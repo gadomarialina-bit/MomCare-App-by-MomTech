@@ -3,85 +3,40 @@
 <head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		
 	<title>MomCare Dashboard</title>
 		<script src="https://cdn.tailwindcss.com"></script>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 	</head><body class="h-full" style="background-color:#a6d6dc; font-family: 'Poppins', sans-serif;">
 
-	<!-- Header -->
-	<header class="bg-green-900 text-white">
-		<div class="max-w-7xl m-auto px-6 py-6">
-			<div class="flex items-center justify-between relative">
-				<div class="flex items-center gap-6">
-					<img src="/images/momcare_logo_white.png" alt="MomCare" class="h-16 w-auto" />
-					<div>
-						<h1 class="text-l lg:text-xl font-light">How are you today, {{ first }}?</h1>
-						<p class="mt-1 text-xs lg:text-sm opacity-90">Today: {{ today }}</p>
-					</div>
-				</div>
-				
-				<button id="menu-toggle" class="p-3 md:p-2 rounded-md mr-2 focus:outline-none" aria-label="Open menu" aria-expanded="false" aria-controls="menu-list">
-					<svg class="h-8 w-8 text-[#ffcc48]" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
-				</button>
-
-				<!-- Overlay for off-canvas menu -->
-				<div id="overlay" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
-
-				<!-- Off-canvas side menu -->
-				<aside id="side-menu" class="fixed top-0 right-0 h-full w-80 bg-white text-green-900 transform translate-x-full transition-transform duration-300 z-50 shadow-lg" aria-hidden="true">
-					<div class="flex items-center justify-between px-4 py-4 border-b">
-						<div class="flex items-center gap-3">
-							<img class="h-10 w-auto" src="/images/momcare_logo_colored.png" alt="MomCare">
-						</div>
-						<button id="side-close" aria-label="Close menu" class="p-2 rounded hover:bg-gray-100">
-							<svg class="h-6 w-6 text-green-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-							</svg>
-						</button>
-					</div>
-					<nav class="px-4 py-6 space-y-2">
-						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-user text-green-900"></i>
-							<span>My Account</span>
-						</a>
-						<a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-chart-line text-green-900"></i>
-							<span>Dashboard</span>
-						</a>
-						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-tasks text-green-900"></i>
-							<span>Daily Tasks</span>
-						</a>
-						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-wallet text-green-900"></i>
-							<span>Budget & Expenses</span>
-						</a>
-						<a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-heart text-green-900"></i>
-							<span>Mood & Wellness</span>
-						</a>
-						<a href="/logout" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
-							<i class="fas fa-sign-out-alt text-green-900"></i>
-							<span>Sign out</span>
-						</a>
-					</nav>
-				</aside>
-			</div>
-		</div>
-	</header>
+	{% include 'navbar.html' %}
 
 
 	<main class="max-w-7xl mx-auto px-6 py-8">
 		
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 			<!-- Card 1 -->
-			<div class="rounded-lg overflow-hidden bg-white shadow">
-				<div class="px-6 py-4 bg-[#ffcc48] text-center font-semibold text-white">Daily Task</div>
-				<div class="p-6">
-					
-					<div class="mt-6 text-center"></div>
+				<div class="rounded-lg overflow-hidden bg-white shadow">
+					<div class="px-6 py-4 bg-[#ffcc48] text-center font-semibold text-white">Daily Task</div>
+					<div class="p-6">
+						<!-- Read-only quick list of upcoming tasks -->
+						<div class="mt-2">
+							{% if tasks and tasks|length > 0 %}
+								<ul class="space-y-2">
+									{% for t in tasks %}
+									<li class="p-2 border rounded">
+										<div class="font-medium">{{ t.title }}</div>
+										<div class="text-xs text-gray-600">{{ t.task_date }}{% if t.start_time %} - {{ t.start_time }}{% endif %}</div>
+									</li>
+									{% endfor %}
+								</ul>
+							{% else %}
+								<p class="text-sm text-gray-600">No upcoming tasks. Visit <a href="/tasks" class="text-blue-600">Daily Tasks</a> to manage them.</p>
+							{% endif %}
+						</div>
+					</div>
 				</div>
-			</div>
 
 			<!-- Card 2 -->
 			<div class="rounded-lg overflow-hidden bg-white shadow">
@@ -112,42 +67,7 @@
 		</div>
 	</main>
 
-	<script>
-		const toggle = document.getElementById('menu-toggle');
-		const sideMenu = document.getElementById('side-menu');
-		const overlay = document.getElementById('overlay');
-		const sideClose = document.getElementById('side-close');
-
-		function openSideMenu() {
-			sideMenu.classList.remove('translate-x-full');
-			sideMenu.setAttribute('aria-hidden', 'false');
-			overlay.classList.remove('hidden');
-			toggle.setAttribute('aria-expanded', 'true');
-		}
-
-		function closeSideMenu() {
-			sideMenu.classList.add('translate-x-full');
-			sideMenu.setAttribute('aria-hidden', 'true');
-			overlay.classList.add('hidden');
-			toggle.setAttribute('aria-expanded', 'false');
-		}
-
-		if (toggle && sideMenu && overlay) {
-			toggle.addEventListener('click', (e) => {
-				e.stopPropagation();
-				if (sideMenu.classList.contains('translate-x-full')) openSideMenu(); else closeSideMenu();
-			});
-
-			sideClose.addEventListener('click', closeSideMenu);
-			overlay.addEventListener('click', closeSideMenu);
-
-			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeSideMenu();
-			});
-		}
-
-
-	</script>
+	
 
 </body>
 </html>
