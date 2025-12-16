@@ -1,75 +1,647 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		
-	<title>MomCare Dashboard</title>
-		<script src="https://cdn.tailwindcss.com"></script>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% extends "layout.html" %}
 
-	</head><body class="h-full" style="background-color:#a6d6dc; font-family: 'Poppins', sans-serif;">
+{% block content %}
+<style>
+    /* ======================================
+    Custom Styles based on the Mood & Wellness Image
+    ======================================
+    */
 
-	{% include 'navbar.html' %}
+    /* Base Body Styling */
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #e6f3f7; /* Light cyan/blue background */
+        padding: 0;
+        margin: 0;
+    }
+
+    .main-container {
+        max-width: 1200px; /* Adjust as needed */
+        margin: 0 auto;
+        padding: 0 20px 40px;
+    }
+
+    /* Header/Navigation Bar (Dark Green) */
+    .header {
+        background-color: #285f30; /* Dark green from the image */
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 40px;
+        position: relative; /* For the menu dropdown */
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+    }
+
+    .logo-container {
+        text-align: center;
+        line-height: 1;
+        margin-right: 30px;
+    }
+
+    .logo-container h1 {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .logo-container p {
+        font-size: 12px;
+        margin: 0;
+        opacity: 0.8;
+    }
+
+    .logo-icon {
+        font-size: 30px;
+        color: white;
+        margin-bottom: -5px;
+    }
+
+    .header-title {
+        text-align: left;
+    }
+
+    .header-title h2 {
+        font-size: 24px;
+        margin: 0;
+    }
+
+    .header-title p {
+        font-size: 14px;
+        margin: 0;
+        opacity: 0.8;
+    }
+
+    /* Menu Button */
+    .menu-button {
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-size: 30px;
+    }
+
+    .menu-icon {
+        width: 30px;
+        height: 20px;
+        position: relative;
+    }
+
+    .menu-icon span {
+        display: block;
+        height: 3px;
+        background-color: white;
+        margin-bottom: 4px;
+        border-radius: 2px;
+    }
+
+    /* Dropdown Menu */
+    .dropdown-menu {
+        position: absolute;
+        top: 100%; /* Position right below the header */
+        right: 40px;
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        min-width: 150px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: none; /* Initially hidden */
+    }
+
+    .dropdown-menu.show {
+        display: block;
+    }
+
+    .dropdown-menu li a {
+        padding: 12px 20px;
+        display: block;
+        text-decoration: none;
+        color: #333;
+        font-size: 16px;
+    }
+
+    .dropdown-menu li:last-child a {
+        border-bottom: none;
+    }
+
+    .dropdown-menu li a:hover {
+        background-color: #f0f0f0;
+    }
+
+    /* Card Layout and Styling */
+    .content-area {
+        padding: 40px 20px;
+        display: flex;
+        gap: 30px;
+    }
+
+    .left-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .right-column {
+        flex: 1.2; /* Slightly wider for the chart */
+    }
+
+    .card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        padding: 0; /* Padding is handled by inner elements */
+        border: 1px solid #ddd;
+    }
+
+    .card-header {
+        background-color: #558b2f; /* Header green */
+        color: white;
+        padding: 15px 20px;
+        font-size: 18px;
+        font-weight: bold;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    /* Mood Section */
+    .mood-container {
+        display: flex;
+        justify-content: space-around;
+        padding: 20px 0;
+        text-align: center;
+    }
+
+    .mood-item {
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 8px;
+        transition: background-color 0.2s;
+        width: 20%;
+    }
+
+    .mood-item:hover, .mood-item.selected {
+        background-color: #e6f3f7;
+    }
+
+    .mood-item p {
+        margin-top: 10px;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    /* Mood Emojis (Simple representation) */
+    .mood-circle {
+        font-size: 40px;
+        line-height: 1;
+    }
+
+    .mood-item.selected .mood-circle {
+        transform: scale(1.1);
+        transition: transform 0.2s;
+    }
+
+    .happy .mood-circle { color: #558b2f; }
+    .neutral .mood-circle { color: #6e8f40; }
+    .tired .mood-circle { color: #f7962d; }
+    .stressed .mood-circle { color: #cc3333; }
+
+    /* Wellness Sub-sections */
+    .wellness-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .wellness-item {
+        background-color: #9bcf6b; /* Lighter green for info boxes */
+        border-radius: 8px;
+        padding: 15px;
+        color: #333;
+        font-size: 14px;
+        min-height: 90px;
+    }
+
+    .wellness-item strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .wellness-item .metric {
+        font-size: 24px;
+        font-weight: bold;
+        color: #285f30;
+        margin-right: 5px;
+        display: inline-block;
+    }
+    
+    .wellness-item .detail {
+        margin-top: 5px;
+        line-height: 1.3;
+    }
+
+    /* Stress Level Section */
+    .stress-card .card-header {
+        background-color: #558b2f; /* Same as other headers */
+    }
+
+    .stress-slider-container {
+        padding: 20px;
+    }
+
+    .stress-slider-container label {
+        display: block;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: #ddd;
+        outline: none;
+        opacity: 0.7;
+        transition: opacity .2s;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #285f30; /* Dark green thumb */
+        cursor: pointer;
+    }
+
+    .slider-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+        font-size: 12px;
+        color: #555;
+    }
+
+    .energy-note {
+        text-align: center;
+        margin-top: 15px;
+        font-style: italic;
+        color: #555;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
 
 
-	<main class="max-w-7xl mx-auto px-6 py-8">
-		
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-			<!-- Card 1 -->
-				<div class="rounded-lg overflow-hidden bg-white shadow">
-					<div class="px-6 py-4 bg-[#ffcc48] text-center font-semibold text-white">Daily Task</div>
-					<div class="p-6">
-						<!-- Read-only quick list of upcoming tasks -->
-						<div class="mt-2">
-							{% if tasks and tasks|length > 0 %}
-								<ul class="space-y-2">
-									{% for t in tasks %}
-									<li class="p-2 border rounded">
-										<div class="font-medium">{{ t.title }}</div>
-										<div class="text-xs text-gray-600">{{ t.task_date }}{% if t.start_time %} - {{ t.start_time }}{% endif %}</div>
-									</li>
-									{% endfor %}
-								</ul>
-							{% else %}
-								<p class="text-sm text-gray-600">No upcoming tasks. Visit <a href="/tasks" class="text-blue-600">Daily Tasks</a> to manage them.</p>
-							{% endif %}
-						</div>
-					</div>
-				</div>
+    /* Weekly Summary (Right Column) */
+    .weekly-summary-card {
+        /* background-color: white; */
+        min-height: 600px; /* Ensure it matches the height */
+    }
+    
+    .chart-info {
+        padding: 20px;
+    }
 
-			<!-- Card 2 -->
-			<div class="rounded-lg overflow-hidden bg-white shadow">
-				<div class="px-6 py-4 bg-[#fa990e] text-center font-semibold text-white">Budget & Expense</div>
-				<div class="p-6 text-[#104b0b]"></div>
-				
-			</div>
+    .chart-wrapper {
+        padding: 20px 20px 0 0;
+        height: 300px;
+    }
 
-			<!-- Card 3 -->
-			<div class="rounded-lg overflow-hidden bg-white shadow">
-				<div class="px-6 py-4 bg-[#5a8d25] text-center font-semibold text-white">Mood &Wellness</div>
-				<div class="p-6 text-[#104b0b]">
-				
-				</div>
-				
-			</div>
-		</div>
+    #weeklyChart {
+        width: 100% !important;
+        height: 100% !important;
+    }
 
-	
-		<div class="space-y-6">
-			<div class="bg-white rounded-lg p-6 shadow text-[#104b0b]">Today's Snapshot:</div>
+    .chart-wrapper {
+        position: relative;
+    }
 
-			<div class="bg-white rounded-lg p-6 shadow flex flex-col md:flex-row md:items-center md:justify-between text-[#104b0b]">
-				<div>Task:</div>
-				<div class="md:text-center">Budget remaining</div>
-				<div>Mood: </div>
-			</div>
-		</div>
-	</main>
+    /* Chart.js overrides */
+    #weeklyChart {
+        max-height: 350px;
+    }
 
-	
+    /* Footer Info */
+    .freq {
+        margin-top: 20px;
+        font-size: 14px;
+    }
 
-</body>
-</html>
+    .tip-section {
+        margin-top: 20px;
+    }
+
+    .tip-section strong {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .tip-blockquote {
+        font-style: italic;
+        margin: 0;
+        padding: 0;
+        border-left: none;
+        color: #555;
+    }
+    
+    /* Date Picker Customization (Minor) */
+    .date-picker-area {
+        display: none; /* Hide the default date input elements */
+    }
+
+</style>
+
+<div class="header">
+    <div class="header-left">
+        <div class="logo-container">
+
+            <h1>MomCare</h1>
+            <p>BALANCE LIFE</p>
+        </div>
+        <div class="header-title">
+            <h2>Mood & Wellness</h2>
+            <p>Today: <span id="dateDisplay"></span></p>
+            <input type="date" id="dateInput" class="date-picker-area">
+        </div>
+    </div>
+    
+    <button class="menu-button" id="menuButton" aria-expanded="false" aria-controls="dropdownMenu">
+        <div class="menu-icon">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </button>
+    
+    <ul class="dropdown-menu" id="dropdownMenu">
+        <li><a href="#" data-page="profile">Profile</a></li>
+        <li><a href="#" data-page="dashboard">Dashboard</a></li>
+        <li><a href="#" data-page="settings">Settings</a></li>
+        <li><a href="#" data-page="logout">Logout</a></li>
+    </ul>
+</div>
+
+<div class="main-container">
+    <div class="content-area">
+        <div class="left-column">
+            
+            <div class="card mood-card">
+                <div class="card-header">How are you feeling today, Mom?</div>
+                <div class="card-body">
+                    <form action="/save_mood" method="POST">
+                        <input type="hidden" id="moodInput" name="mood">
+                        <div class="mood-container">
+                            
+                            <div class="mood-item" onclick="selectMood('Happy', this)">
+                                <div class="mood-circle">😄</div>
+                                <p>Happy</p>
+                            </div>
+                            
+                            <div class="mood-item" onclick="selectMood('Neutral', this)">
+                                <div class="mood-circle">😐</div>
+                                <p>Neutral</p>
+                            </div>
+                            
+                            <div class="mood-item" onclick="selectMood('Tired', this)">
+                                <div class="mood-circle">😟</div>
+                                <p>Tired</p>
+                            </div>
+                            
+                            <div class="mood-item" onclick="selectMood('Stressed', this)">
+                                <div class="mood-circle">😩</div>
+                                <p>Stressed <br>(Workload)</p>
+                            </div>
+                            
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="wellness-card-group">
+                <div class="wellness-grid">
+                    
+                    <div class="wellness-item">
+                        <strong>🌙 Rest & Sleep</strong>
+                        <div class="metric">7.5 <span style="font-size:16px;">hours</span></div>
+                        <div class="detail">You slept 7-8 hrs for 4 days this week</div>
+                    </div>
+                    
+                    <div class="wellness-item">
+                        <strong>💧 Hydration</strong>
+                        <div class="metric">0/8 <span style="font-size:16px;">glasses</span></div>
+                        <div class="detail">Water Today: 0/8 glasses</div>
+                    </div>
+                    
+                    <div class="wellness-item">
+                        <strong>🏃‍♀️ Physical Wellbeing</strong>
+                        <div class="detail">Activity Today: Light Stretching</div>
+                        <div class="detail" style="margin-top: 5px;">*Data input fields would go here*</div>
+                    </div>
+                    
+                </div>
+            </div>
+            
+            <div class="card stress-card">
+                <div class="card-header">Emotional & Mental Wellness</div>
+                <div class="stress-slider-container">
+                    <label>Stress Level</label>
+                    <input type="range" min="0" max="10" value="2" class="slider">
+                    <div class="slider-labels">
+                        <span class="low">Low</span>
+                        <span class="high">High</span>
+                    </div>
+                    <p class="energy-note">You’ve been gaining more energy this week 💛</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="right-column">
+            
+            <div class="card weekly-summary-card">
+                <div class="card-header">Weekly Summary</div>
+                <div class="chart-info">
+                    <p style="font-weight: 500; margin-bottom: 20px;">Nov 20 – Nov 26</p>
+                    
+                    <div class="chart-wrapper">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+
+                    <p class="freq">Your most frequent mood this week was <strong>Happy</strong>.</p>
+                    
+                    <div class="tip-section">
+                        <strong>Wellness Tip for Today:</strong>
+                        <p class="tip-blockquote">“Take a deep breath and stretch for a few minutes.”</p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // --- Date Picker Logic (Modified from original) ---
+    const dateDisplay = document.getElementById("dateDisplay");
+    const dateInput = document.getElementById("dateInput");
+
+    // Set default date to today
+    const today = new Date();
+    dateInput.value = today.toISOString().split('T')[0];
+    updateDateText(today);
+
+    // Show date picker when text is clicked
+    dateDisplay.addEventListener("click", () => {
+        dateInput.showPicker();
+    });
+
+    // Update display when a new date is selected
+    dateInput.addEventListener("change", () => {
+        const selectedDate = new Date(dateInput.value);
+        updateDateText(selectedDate);
+    });
+
+    function updateDateText(date) {
+        const options = { year: 'numeric', month: 'long' }; // Updated to show 'Month Year' as in the image
+        dateDisplay.textContent = date.toLocaleDateString('en-US', options);
+    }
+
+    // --- Mood Selection Logic ---
+    function selectMood(mood, element) {
+        // 1. Remove 'selected' class from all mood items
+        document.querySelectorAll('.mood-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+
+        // 2. Add 'selected' class to the clicked item
+        element.classList.add('selected');
+
+        // 3. Update the hidden form input
+        document.getElementById('moodInput').value = mood;
+
+        // In a real application, you would now submit the form or send an AJAX request
+        console.log(`Mood selected: ${mood}`);
+        
+        // **Simulation of dashboard reflection:** // We can reflect the selection by updating the "frequent mood" text
+        document.querySelector('.freq strong').textContent = mood;
+    }
 
 
+    // --- Menu Dropdown Logic ---
+    const menuButton = document.getElementById('menuButton');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+
+    menuButton.addEventListener('click', () => {
+        const isExpanded = menuButton.getAttribute('aria-expanded') === 'true' || false;
+        menuButton.setAttribute('aria-expanded', !isExpanded);
+        dropdownMenu.classList.toggle('show');
+    });
+
+    // Close the dropdown if the user clicks outside of it
+    document.addEventListener('click', (event) => {
+        if (!menuButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+            dropdownMenu.classList.remove('show');
+            menuButton.setAttribute('aria-expanded', 'false');
+        }
+    });
+    
+    // Menu item click simulation for "reflection"
+    document.querySelectorAll('#dropdownMenu a').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = e.target.getAttribute('data-page');
+            alert(`Navigating to ${page.charAt(0).toUpperCase() + page.slice(1)}...`);
+            // Close the menu after clicking
+            dropdownMenu.classList.remove('show');
+            menuButton.setAttribute('aria-expanded', 'false');
+            
+            // **Dashboard Reflection:**
+            if (page === 'dashboard') {
+                // Example of a reflection: highlight the dashboard area or change a title
+                document.querySelector('.header-title h2').textContent = 'Mood & Wellness (Dashboard View)';
+            } else if (page === 'profile') {
+                document.querySelector('.header-title h2').textContent = 'User Profile';
+            } else {
+                document.querySelector('.header-title h2').textContent = 'Mood & Wellness';
+            }
+        });
+    });
+
+    // --- Weekly Chart Configuration ---
+    const ctx = document.getElementById('weeklyChart').getContext('2d');
+
+    // Data set based on the image's bar heights
+    const chartData = [16, 12, 9, 17, 11, 4, 6]; 
+    const chartLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Custom colors matching the bars in the image
+    const backgroundColors = [
+        '#2f6b32', // Sun (Dark Green)
+        '#558b2f', // Mon (Medium Green)
+        '#f7df72', // Tue (Yellow)
+        '#f7962d', // Wed (Orange)
+        '#b8d9ea', // Thu (Light Blue)
+        '#6e8f40', // Fri (Olive Green)
+        '#9bcf6b'  // Sat (Light Green)
+    ];
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                data: chartData,
+                backgroundColor: backgroundColors,
+                borderRadius: 6,
+                barPercentage: 0.8 // Adjust bar width
+            }]
+        },
+        options: {
+            maintainAspectRatio: false, // Allows chart to fill its container
+            scales: {
+                y: {
+                    min: 0,
+                    max: 20, // Max value based on the image's Y-axis
+                    ticks: {
+                        stepSize: 5,   
+                        callback: (value) => value
+                    },
+                    grid: {
+                        color: '#e0e0e0',
+                        lineWidth: 1
+                    },
+                    border: { display: false }
+                },
+                x: {
+                    grid: { display: false },
+                    border: { display: false }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+</script>
+
+{% endblock %}
