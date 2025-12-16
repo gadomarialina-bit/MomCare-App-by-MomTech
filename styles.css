@@ -1,0 +1,132 @@
+/* ======================================
+GLOBAL STYLES & LAYOUT BASE
+====================================== */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #e6f3f7; /* Light cyan/blue background */
+    margin: 0;
+    padding: 0;
+}
+
+.main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ======================================
+HEADER & NAVIGATION
+====================================== */
+.header {
+    background-color: #285f30; /* Dark green */
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 40px;
+    position: relative;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.logo-container {
+    text-align: center;
+    line-height: 1;
+    margin-right: 30px;
+}
+
+/* Heart Icon Styling */
+.logo-container .heart {
+    font-size: 28px;
+    color: white;
+    margin-bottom: -5px;
+    display: block;
+}
+
+.logo-container h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+
+.logo-container small {
+    font-size: 10px;
+    margin: 0;
+    opacity: 0.8;
+    display: block;
+}
+
+.page-title {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Menu Button (Hamburger) */
+.menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 20px;
+}
+
+.menu-btn .bar {
+    display: block;
+    height: 3px;
+    background-color: white;
+    border-radius: 2px;
+}
+
+/* Dropdown Menu */
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 40px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    min-width: 160px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: none; /* Hidden by default */
+}
+
+.menu-dropdown.open {
+    display: block;
+}
+
+.menu-dropdown .dropdown-item {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+}
+
+.menu-dropdown .dropdown-item i {
+    margin-right: 10px;
+    color: #558b2f; /* Green icon color */
+}
+
+.menu-dropdown .dropdown-item:hover {
+    background-color: #f0f0f0;
+}
+
+/* Optional: Improve accessibility focus styles */
+.menu-btn:focus,
+.dropdown-item:focus {
+    outline: 2px solid #558b2f;
+    outline-offset: 2px;
+}

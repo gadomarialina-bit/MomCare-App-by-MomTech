@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MomCare | Mood & Wellness</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <main>
+        <div class="header">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="MomCare Logo" class="logo"> 
+                <div class="logo-text">
+                    <h2>MomCare</h2>
+                    <small>BALANCE. LOVE. LIFE.</small>
+                </div>
+            </div>
+            
+            <div class="menu-container">
+                <button class="menu-btn" onclick="toggleMenu()">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+                <div class="menu-dropdown" id="dropdownMenu">
+                    <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Profile</a>
+                    <a href="#" class="dropdown-item"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                    <a href="#" class="dropdown-item logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+
+        <h1 class="page-title">Mood & Wellness</h1>
+        <p class="date">Today: {{ current_month }}</p>
+
+        <div class="dashboard-grid">
+            <div class="left-column">
+                
+                <div class="card mood-card">
+                    <h3>How are you feeling today, Mom?</h3>
+                    <div class="mood-options">
+                        <div class="mood-item happy" data-mood="Happy">
+                            <div class="mood-circle">😊</div>
+                            <span>Happy</span>
+                        </div>
+                        <div class="mood-item neutral selected" data-mood="Neutral">
+                            <div class="mood-circle">😐</div>
+                            <span>Neutral</span>
+                        </div>
+                        <div class="mood-item tired" data-mood="Tired">
+                            <div class="mood-circle">😫</div>
+                            <span>Tired</span>
+                        </div>
+                        <div class="mood-item stressed" data-mood="Stressed">
+                            <div class="mood-circle">😟</div>
+                            <span>Stressed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-row">
+                    <div class="info-card">
+                        <h4>Rest & Sleep</h4>
+                        <p><strong>🕒 7.5 hours</strong></p>
+                        <p class="note">You slept 7-8 hrs for 4 days this week</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Hydration</h4>
+                        <p><strong>💧 Water Today:</strong></p>
+                        <p class="note">6/8 glasses</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Physical Wellbeing</h4>
+                        <p><strong>🧘 Activity:</strong></p>
+                        <p class="note">Light Stretching</p>
+                    </div>
+                </div>
+
+                <div class="card emotional-card">
+                    <h4>Emotional & Mental Wellness</h4>
+                    <div class="stress-container">
+                        <label for="stressSlider">Stress Level</label>
+                        <input type="range" id="stressSlider" min="0" max="100" value="50" class="slider">
+                        <div class="stress-labels">
+                            <span class="low">Low</span>
+                            <span class="high">High</span>
+                        </div>
+                    </div>
+                    <p class="energy-note">You've been gaining more energy this week 💛</p>
+                </div>
+
+                <button class="submit-btn" onclick="submitWellness()">Log My Wellness</button>
+            </div>
+
+            <div class="right-column">
+                <div class="card weekly-card">
+                    <h3>Weekly Summary</h3>
+                    <p id="weekRange">{{ week_range }}</p>
+                    
+                    <div class="chart">
+                        <div class="bar sun" style="height: 80%;"></div>
+                        <div class="bar mon" style="height: 60%;"></div>
+                        <div class="bar tue" style="height: 40%;"></div>
+                        <div class="bar wed" style="height: 90%;"></div>
+                        <div class="bar thu" style="height: 50%;"></div>
+                        <div class="bar fri" style="height: 55%;"></div>
+                        <div class="bar sat" style="height: 30%;"></div>
+                    </div>
+                    <div class="chart-labels">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+
+                    <p class="freq">Your most frequent mood this week was <strong>Neutral</strong>.</p>
+
+                    <div class="tip-section">
+                        <p class="tip-title">Wellness Tip for Today:</p>
+                        <p class="tip" id="wellnessTip">{{ wellness_tip }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    
+    <script>
+        let selectedMood = "Neutral"; // default
+
+        document.querySelectorAll('.mood-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.mood-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+                selectedMood = item.getAttribute('data-mood');
+            });
+        });
+
+        function submitWellness() {
+            const stressLevel = document.getElementById('stressSlider').value;
+            fetch('/api/log-wellness', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    mood: selectedMood,
+                    stress_level: stressLevel
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Wellness logged successfully!');
+                console.log(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to log wellness.');
+            });
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close menu when clicking outside
+        window.onclick = function(event) {
+            const menu = document.getElementById('dropdownMenu');
+            if (!event.target.closest('.menu-container')) {
+                menu.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MomCare | Mood & Wellness</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* ======================================
+        GLOBAL STYLES & LAYOUT BASE
+        ====================================== */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #e6f3f7; /* Light cyan/blue background from image */
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-content {
+            max-width: 1200px; /* Dashboard max width */
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ======================================
+        HEADER & NAVIGATION
+        ====================================== */
+        .header {
+            background-color: #285f30; /* Dark green from the image */
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-container {
+            text-align: center;
+            line-height: 1;
+            margin-right: 30px;
+        }
+
+        /* Heart Icon Styling */
+        .logo-container .heart {
+            font-size: 28px;
+            color: white; 
+            margin-bottom: -5px;
+            display: block;
+        }
+
+        .logo-container h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .logo-container small {
+            font-size: 10px;
+            margin: 0;
+            opacity: 0.8;
+            display: block;
+        }
+
+        .page-title {
+            font-size: 24px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        /* Menu Button (Hamburger) */
+        .menu-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 20px;
+        }
+        
+        .menu-btn .bar {
+            display: block;
+            height: 3px;
+            background-color: white;
+            border-radius: 2px;
+        }
+
+        /* Dropdown Menu */
+        .menu-dropdown {
+            position: absolute;
+            top: 100%; 
+            right: 40px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            min-width: 160px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: none; /* Initially hidden */
+        }
+
+        .menu-dropdown.open {
+            display: block;
+        }
+
+        .menu-dropdown .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .menu-dropdown .dropdown-item i {
+            margin-right: 10px;
+            color: #558b2f; /* Using the card header green for icons */
+        }
+
+        .menu-dropdown .dropdown-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-container">
+                <span class="heart">❤️</span>
+                <h2>MomCare</h2>
+                <small>BALANCE & LIVE</small>
+            </div>
+            <h1 class="page-title">Mood & Wellness</h1>
+        </div>
+        
+        <div class="menu-container">
+            <button class="menu-btn" onclick="toggleMenu()" id="menuButton" aria-expanded="false">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+            <div class="menu-dropdown" id="dropdownMenu">
+                <a href="#" class="dropdown-item" data-page="profile"><i class="fas fa-user"></i> Profile</a>
+                <a href="#" class="dropdown-item" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                <a href="#" class="dropdown-item" data-page="settings"><i class="fas fa-cog"></i> Settings</a>
+                <a href="#" class="dropdown-item logout" data-page="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById("dropdownMenu");
+            const button = document.getElementById("menuButton");
+            const isVisible = menu.classList.toggle("open");
+            button.setAttribute('aria-expanded', isVisible);
+        }
+
+        document.addEventListener("click", function(event) {
+            const menu = document.getElementById("dropdownMenu");
+            const btn = document.getElementById("menuButton");
+
+            if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                menu.classList.remove("open");
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+        
+        // Reflection on dashboard click
+        document.querySelectorAll('.menu-dropdown .dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const page = e.currentTarget.getAttribute('data-page');
+                alert(`Navigating to ${page.charAt(0).toUpperCase() + page.slice(1)}... (Dashboard Reflection)`);
+                // Close the menu
+                document.getElementById("dropdownMenu").classList.remove("open");
+                document.getElementById("menuButton").setAttribute('aria-expanded', 'false');
+            });
+        });
+    </script>
+</body>
+</html>
