@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Profile</title>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #a7d8e5;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Top Green Header */
+        .top-header {
+            background-color: #0b3f0a;
+            padding: 45px 160px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-left img {
+            height: 60px;
+            margin-right: 15px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .date-text {
+            margin-top: 5px;
+            font-size: 15px;
+        }
+
+        /* MENU BUTTON in Header */
+   .menu-btn {
+    font-size: 36px;
+    color: #fecc47;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+        .menu-panel {
+            position: absolute;
+            top: 90px;														
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            width: 180px;
+            padding: 10px 0;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+            display: none; /* hidden by default */
+            z-index: 999;
+        }
+
+        .menu-panel a {
+            display: block;
+            padding: 12px 20px;
+            font-size: 16px;
+            color: #104b0b;
+            text-decoration: none;
+        }
+
+        .menu-panel a:hover {
+            background: #a5dbe5;
+        }
+
+/* Dropdown container */
+.menu-wrapper {
+    position: relative;
+}				
+
+/* DROPDOWN MENU BOX */
+.dropdown-menu {
+    position: absolute;
+    top: 150px;
+    right: -20px;
+    background: #ffffff;
+    width: -220px;
+    border-radius: 16px;
+    padding: 10px;
+    display: none; /* Hide initially */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+/* Each menu row */
+.dropdown-item {
+    display: flex;
+    align-items: left-side;
+    gap: 12px;
+    padding: 15px;
+    margin: 12px;
+    cursor: pointer;
+    border-radius: 10px;
+    font-size: 18px;
+	font-style: Poppins;
+	color: black;
+}
+
+.dropdown-item:hover {
+    background: #e6f7ea;
+}
+
+/* ICON SIZE */
+.dropdown-item img {
+    width: 28px;
+    height: 28px;
+}
+
+/* SIGN OUT */
+.signout-btn {
+    display: block;
+    width: 85%;
+    margin: 15px auto;
+    padding: 12px;
+    border-radius: 10px;
+    background: #4CAF50;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+}
+
+.signout-btn:hover {
+    background: #4CAF50;
+}
+
+        /* Section Title */
+        .section-header {
+            background-color: #4f8c1e;
+            color: white;
+            text-align: center;
+            font-size: 22px;
+            padding: 15px 0;
+            width: 64%;
+            margin: 40px auto 0;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            font-weight: bold;
+        }
+
+        /* Profile Container */
+        .profile-box {
+            width: 60%;
+            background-color: white;
+            margin: 0 auto 50px;
+            padding: 40px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.15);
+            color: #0b3f0a;
+            font-size: 16px;
+        }
+
+        /* Profile Picture Frame */
+        .profile-photo {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .profile-photo img {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 5px solid #4e8712;
+            object-fit: cover;
+        }
+
+        .upload-label {
+            margin-top: 10px;
+            display: block;
+            font-size: 14px;
+            color: #0b3f0a;
+            cursor: pointer;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+            font-size: 15px;
+        }
+
+        /* Buttons */
+        .btn-row {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .save-btn {
+            background-color: #4f8c1e;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            width: 150px;
+            font-size: 16px;
+        }
+
+        .cancel-btn {
+            background-color: #d9534f;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            width: 150px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="top-header">
+    <div class="header-left">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="Logo">
+        <div>
+            <div class="page-title">My Account</div>
+            <div class="date-text">Today: November 2025</div>
+        </div>
+    </div>
+
+    <!-- MENU BUTTON -->
+    <button class="menu-btn" onclick="toggleMenu()">☰</button>
+
+    <!-- MENU DROPDOWN -->
+    <div id="menuDropdown" class="dropdown-menu">
+
+        <a href="{{ url_for('profile', user_id=user['id']) }}">
+            <div class="dropdown-item">
+                <img src="https://img.icons8.com/ios-filled/50/ffa726/user-male-circle.png" class="icon">
+                <span>My Account</span>
+            </div>
+        </a>
+
+        <a href="{{ url_for('dashboard', user_id=user['id']) }}">
+            <div class="dropdown-item">
+                <img src="https://img.icons8.com/fluency/48/home.png" class="icon">
+                <span>Home</span>
+            </div>
+        </a>
+
+        <div class="dropdown-item">
+            <img src="https://img.icons8.com/color/48/todo-list.png" class="icon">
+            <span>Daily Tasks</span>
+        </div>
+
+        <div class="dropdown-item">
+            <img src="https://img.icons8.com/color/48/money-bag.png" class="icon">
+            <span>Budget & Expenses</span>
+        </div>
+
+        <div class="dropdown-item">
+            <img src="https://img.icons8.com/color/48/like.png" class="icon">
+            <span>Mood & Wellness</span>
+        </div>
+
+        <button class="signout-btn">Sign Out</button>
+    </div>
+</div>
+
+
+<!-- SECTION TITLE -->
+<div class="section-header">Edit Profile</div>
+
+<!-- MAIN CONTENT BOX -->
+<div class="profile-box">
+</form>
+    <form method="POST" action="{{ url_for('edit_profile') }}">
+    
+    <label for="first_name">First Name</label>
+    <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
+    
+    <label for="last_name">Last Name</label>
+    <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
+    
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="{{ user.email or '' }}" required>
+    
+    <label for="birthdate">Birth Date</label>
+    <input type="date" id="birthdate" name="birthdate" value="{{ user.birthdate or '' }}">
+    
+    <label for="gender">Gender</label>
+    <select id="gender" name="gender">
+        <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+        <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+    </select>
+    
+    <label for="height">Height (cm)</label>
+    <input type="number" id="height" name="height" value="{{ user.height or '' }}">
+
+    <label for="weight">Weight (kg)</label>
+    <input type="number" id="weight" name="weight" value="{{ user.weight or '' }}">
+
+    <div class="btn-row">
+        <form method="POST" action="{{ url_for('edit_profile') }}">
+    <button class="save-btn" type="submit">Save</button>
+        <a href="{{ url_for('profile', user_id=user.id) }}"></a>
+            <button type="button" class="cancel-btn">Cancel</button>
+        </a>
+    
+</form>
+	
+
+    
+</form> 
+
+
+</div>
+
+<script>
+function toggleMenu() {
+    let menu = document.getElementById("menuDropdown");
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+}
+
+window.onclick = function(event) {
+    let menu = document.getElementById("menuDropdown");
+    if (!event.target.matches('.menu-btn')) {
+        menu.style.display = "none";
+    }
+}
+</script>
+
+</body>
+</html>
