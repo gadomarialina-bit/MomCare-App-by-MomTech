@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 
-app = Flask(__name__, static_folder='images', static_url_path='/images')
+app = Flask(__name__)
 app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-production')
 
 
@@ -129,11 +129,24 @@ def signup():
             return redirect(url_for('signup'))
         conn.close()
 
-        # simple session mark
-        session['user_email'] = email
-        session['user_first'] = first
-        flash('Account created successfully!')
-        return redirect(url_for('dashboard'))
+        # Get the new user's ID
+        try:
+            conn = get_db()  # Reconnect to get ID
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+            user_row = cur.fetchone()
+            user_id = user_row['id']
+            conn.close()
+            
+            session['user_id'] = user_id
+            session['user_email'] = email
+            session['user_first'] = first
+            flash('Account created successfully!')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            print(f"Error setting session: {e}")
+            flash('Account created, but please log in.')
+            return redirect(url_for('index'))
 
     return render_template('signup.html')
 
@@ -149,7 +162,7 @@ def login():
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('SELECT first, password_hash FROM users WHERE email = ?', (email,))
+    cur.execute('SELECT id, first, password_hash FROM users WHERE email = ?', (email,))
     row = cur.fetchone()
     conn.close()
 
@@ -157,6 +170,7 @@ def login():
         flash('Invalid email or password.')
         return redirect(url_for('index'))
 
+    user_id = row['id']
     first = row['first']
     password_hash = row['password_hash']
 
@@ -164,6 +178,7 @@ def login():
         flash('Invalid email or password.')
         return redirect(url_for('index'))
 
+    session['user_id'] = user_id
     session['user_email'] = email
     session['user_first'] = first
     return redirect(url_for('dashboard'))
@@ -290,13 +305,7 @@ def init_tasks_table():
     conn.commit()
     conn.close()
 
-@app.route('/dailytask_static/<path:filename>')
-def dailytask_static(filename):
-    """Serve static files from the DAILYTASK folder (CSS/JS/images).
-    This avoids changing the app's static folder configuration.
-    """
-    base = Path(__file__).parent / 'DAILYTASK'
-    return send_from_directory(base, filename)
+
 
 
 # JSON API endpoints for client-side integration
@@ -560,7 +569,88 @@ def budgetexpenses():
 
 @app.route('/logout')
 def logout():
-    session.pop('user_email', None)
     session.pop('user_first', None)
+    session.pop('user_email', None) # Ensure email is also popped
+    session.pop('user_id', None)
     flash('You have been signed out.')
     return redirect(url_for('index'))
+
+
+@app.route('/my-account')
+def my_account():
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Please sign in.')
+        return redirect(url_for('index'))
+        
+    user_id = session.get('user_id')
+    if not user_id:
+        # Fallback for old sessions: look up ID by email
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM users WHERE email = ?', (user_email,))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            user_id = row['id']
+            session['user_id'] = user_id
+        else:
+            flash('Account not found.')
+            return redirect(url_for('logout'))
+            
+    return redirect(url_for('profile', user_id=user_id))
+
+
+@app.route('/profile/<int:user_id>')
+def profile(user_id):
+    # logic to fetch user data
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Please sign in to view your profile.')
+        return redirect(url_for('index'))
+
+    conn = get_db()
+    cur = conn.cursor()
+    # Fetch user details
+    cur.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user_row = cur.fetchone()
+    conn.close()
+
+    if not user_row:
+        flash('User not found.')
+        return redirect(url_for('dashboard'))
+    
+    # Check if the logged-in user matches the requested profile or is admin (if applicable)
+    # For now, simplistic check: email must match
+    if user_row['email'] != user_email:
+         flash('Unauthorized access.')
+         return redirect(url_for('dashboard'))
+
+    # Prepare user object for template
+    user = dict(user_row)
+    user['password_display'] = '********' 
+    
+    # Ensure fields expected by template exist, map from DB columns
+    # DB has: first, last, email, birthdate...
+    # Template expects: first_name, last_name, gender, height_display, weight_display
+    # We might need to add these columns to DB or handle missing data gracefully.
+    # For this iteration, I will map existing DB fields and use placeholders for missing ones.
+    
+    user['first_name'] = user['first']
+    user['last_name'] = user['last']
+    user['birthdate_display'] = user['birthdate']
+    
+    # Placeholders for fields not searching in init_db yet
+    user['gender'] = user.get('gender', 'Not Specified')
+    user['height_display'] = user.get('height', '0')
+    user['weight_display'] = user.get('weight', '0')
+
+
+    first = session.get('user_first')
+    today = datetime.now().strftime('%B %d, %Y')
+    
+    return render_template('profile.html', user=user, first=first, today=today)
+
+@app.route('/profile/edit/<int:user_id>')
+def edit_profile(user_id):
+     return "Edit Profile Page (Coming Soon)"

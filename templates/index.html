@@ -1,74 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    
-    <title>MomCare Balance Life</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.tailwindcss.com"></script>
 
-  
+<head>
+
+  <title>MomCare Balance Life</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+
 </head>
 
 <body class="h-full">
 
-<div class="min-h-screen flex flex-col justify-center" style="background-color: #a6d6dc;">
-  <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-    <img src="/images/momcare_logo_colored.png" alt="MomCare" class="mx-auto h-24 w-auto" />
-   
+  <div class="min-h-screen flex flex-col justify-center" style="background-color: #a6d6dc;">
+    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+      <img src="{{ url_for('static', filename='images/momcare_logo_colored.png') }}" alt="MomCare"
+        class="mx-auto h-24 w-auto" />
 
-  <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-    <div class="rounded-lg px-6 py-8">
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
+
+      <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+        <div class="rounded-lg px-6 py-8">
+          {% with messages = get_flashed_messages() %}
+          {% if messages %}
           <div class="mb-4 px-3">
             {% for msg in messages %}
-              <div class="rounded-md text-red-800 px-3 py-2 mb-2 text-center">{{ msg }}</div>
+            <div class="rounded-md text-red-800 px-3 py-2 mb-2 text-center">{{ msg }}</div>
             {% endfor %}
           </div>
-        {% endif %}
-      {% endwith %}
+          {% endif %}
+          {% endwith %}
 
-      <form action="/login" method="POST" class="space-y-4">
-         <div class="my-4">
+          <form action="/login" method="POST" class="space-y-4">
+            <div class="my-4">
               <label class="sr-only" for="email">Email</label>
-              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
-                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                <input id="email" name="email" type="email" required autocomplete="email" placeholder="Email" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+              <div
+                class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+                </svg>
+                <input id="email" name="email" type="email" required autocomplete="email" placeholder="Email"
+                  class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
               </div>
 
-         <div class="my-4">
-              <label class="sr-only" for="password">Password</label>
-              <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
-                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z"/></svg>
-                <input id="password" name="password" type="password" required autocomplete="password" placeholder="Password" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+              <div class="my-4">
+                <label class="sr-only" for="password">Password</label>
+                <div
+                  class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                  <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                    viewBox="0 0 24 24">
+                    <path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z" />
+                  </svg>
+                  <input id="password" name="password" type="password" required autocomplete="password"
+                    placeholder="Password"
+                    class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+                </div>
               </div>
             </div>
-        </div>
 
 
-        <div class="my-4">
-            <button id="sign-btn" type="submit" class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Sign in</button>
-        </div>
-        
-        <div class="text-center text-sm text-[#104b0b]">
-          <a href="/forgot-password-qa" class="hover:text-[#5a8d25]">Forgot password?</a>
-        </div>
-        
-        <div class="text-center text-sm text-[#104b0b]">
+            <div class="my-4">
+              <button id="sign-btn" type="submit"
+                class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Sign
+                in</button>
+            </div>
+
+            <div class="text-center text-sm text-[#104b0b]">
+              <a href="/forgot-password-qa" class="hover:text-[#5a8d25]">Forgot password?</a>
+            </div>
+
+            <div class="text-center text-sm text-[#104b0b]">
               Don't have an account? <a href="/signup" class="hover:text-[#5a8d25]">Sign up.</a>
             </div>
 
-      </form>
+          </form>
+        </div>
+
+
+
+
+      </div>
     </div>
 
 
-
-
-  </div>
-</div>
-
-
 </body>
-</html>
 
+</html>
