@@ -3,7 +3,8 @@ GLOBAL STYLES & LAYOUT BASE
 ====================================== */
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #e6f3f7; /* Light cyan/blue background */
+    background-color: #e6f3f7;
+    /* Light cyan/blue background */
     margin: 0;
     padding: 0;
 }
@@ -18,7 +19,8 @@ body {
 HEADER & NAVIGATION
 ====================================== */
 .header {
-    background-color: #285f30; /* Dark green */
+    background-color: #285f30;
+    /* Dark green */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -99,7 +101,8 @@ HEADER & NAVIGATION
     list-style: none;
     padding: 0;
     margin: 0;
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
 }
 
 .menu-dropdown.open {
@@ -117,7 +120,8 @@ HEADER & NAVIGATION
 
 .menu-dropdown .dropdown-item i {
     margin-right: 10px;
-    color: #558b2f; /* Green icon color */
+    color: #558b2f;
+    /* Green icon color */
 }
 
 .menu-dropdown .dropdown-item:hover {
