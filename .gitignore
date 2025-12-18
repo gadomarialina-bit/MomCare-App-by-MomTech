@@ -56,3 +56,4 @@ htmlcov/
 .python-version
 *.pot
 *.mo
+*.pyc

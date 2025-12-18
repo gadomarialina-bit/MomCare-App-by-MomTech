@@ -558,8 +558,6 @@ def budgetexpenses():
     return render_template('budget.html', first=first, today=today)
 
 
-
-
 @app.route('/logout')
 def logout():
     session.pop('user_email', None)
