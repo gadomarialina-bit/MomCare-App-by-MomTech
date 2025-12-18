@@ -4,14 +4,636 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MomCare Daily Planner</title>
+    <title>MomCare Budget & Expenses</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+    </style>
 </head>
 
-<body>
+<body class="bg-[#a5dbe5] text-[#23423c] font-sans m-0 p-0">
+
     {% include 'navbar.html' %}
 
+    <main class="max-w-[1400px] mx-auto p-6 md:p-10">
 
+        <!-- Page Header -->
+        <div
+            class="flex flex-col md:flex-row items-center justify-between mb-8 bg-[#1f4f1e] text-white p-4 rounded-xl shadow-lg">
+            <div class="flex items-center gap-4">
+                <!-- Logo optional if already in navbar, keeping for completeness of 'header' migration if desired, utilizing icon instead -->
+                <i class="fas fa-wallet text-3xl text-[#f9d24b]"></i>
+                <div>
+                    <h1 class="text-2xl font-bold m-0">Budget & Expenses</h1>
+                    <div class="text-sm opacity-90 mt-1" id="todayLabel">Today:</div>
+                </div>
+            </div>
 
+            <div class="flex items-center gap-4 mt-4 md:mt-0 bg-white text-[#23423c] px-3 py-2 rounded-lg">
+                <select id="monthSelect"
+                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium"></select>
+                <select id="yearSelect"
+                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium ml-2"></select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Monthly Budget Summary -->
+            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
+                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Monthly Budget Summary</div>
+                <div class="p-6 flex-1 text-sm">
+                    <div class="flex justify-between mb-3 text-[15px]">
+                        <div class="font-medium">Monthly Income</div>
+                        <div>
+                            <input type="number" id="incomeInput" value="160000" min="0"
+                                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
+                        </div>
+                    </div>
+                    <div class="flex justify-between mb-3 text-[15px]">
+                        <div class="font-medium">Monthly Budget Limit</div>
+                        <div>
+                            <input type="number" id="budgetInput" value="160000" min="0"
+                                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
+                        </div>
+                    </div>
+                    <div class="flex justify-between mb-3 text-[15px]">
+                        <div class="font-medium">Total Spent This Month</div>
+                        <div class="font-bold text-[#1f4f1e]" id="totalSpentDisplay">₱ 0.00</div>
+                    </div>
+
+                    <div class="border-t border-dashed border-gray-400 my-4"></div>
+
+                    <div id="categorySummary" class="text-[13px] my-2"></div>
+
+                    <div class="flex justify-between mt-2 font-medium text-[#0e4f23]">
+                        <div id="budgetUsedLabel">0% Budget Used</div>
+                        <div id="remainingDisplay">Remaining: ₱ 0.00</div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Spending Category -->
+            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
+                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Spending Category</div>
+                <div class="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8">
+                    <div class="relative w-[160px] h-[160px] shrink-0">
+                        <canvas id="pieChart" width="160" height="160"
+                            class="rounded-full shadow-[0_0_0_8px_#f1f8e9] bg-white"></canvas>
+                    </div>
+                    <div class="flex-1 w-full max-w-[320px]" id="categoryList">
+                        <!-- Legend Items go here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Expense -->
+            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
+                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Add Expense</div>
+                <div class="p-6 flex-1">
+                    <form id="expenseForm">
+                        <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 items-center text-sm">
+                            <label class="font-medium" for="expenseAmount">Amount</label>
+                            <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Enter amount"
+                                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
+
+                            <label class="font-medium" for="expenseCategory">Category</label>
+                            <select id="expenseCategory"
+                                class="w-full border border-gray-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-[#ed008c]">
+                                <option value="">Select category</option>
+                                <option>Groceries</option>
+                                <option>Kids/School</option>
+                                <option>Transport</option>
+                                <option>Utilities</option>
+                                <option>Home Mortgage</option>
+                                <option>Subscription</option>
+                                <option>Savings</option>
+                                <option>Others</option>
+                            </select>
+
+                            <label class="font-medium" for="expenseDate">Date</label>
+                            <input id="expenseDate" type="date"
+                                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
+
+                            <div class="col-span-2 flex items-center gap-2 mt-1">
+                                <div
+                                    class="w-5 h-5 border-2 border-[#0e4f23] rounded flex items-center justify-center bg-white">
+                                    <input type="checkbox" id="ecoCheckbox" disabled
+                                        class="w-3.5 h-3.5 accent-[#0e4f23]">
+                                </div>
+                                <span>Mark as Eco-Spending</span>
+                                <span class="text-[#4caf50]">🍃</span>
+                            </div>
+
+                            <div class="col-span-2 grid grid-cols-[auto_1fr] gap-x-4">
+                                <label class="font-medium pt-1" for="expenseNotes">Notes</label>
+                                <textarea id="expenseNotes" placeholder="Add any details about this expense"
+                                    class="w-full border border-gray-300 rounded px-2 py-1.5 min-h-[60px] focus:outline-none focus:border-[#ed008c] resize-y"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 mt-4">
+                            <button type="button" id="clearExpenseBtn"
+                                class="px-4 py-2 rounded-full text-[#607d8b] bg-transparent hover:bg-gray-100 font-medium transition-colors">Cancel</button>
+                            <button type="submit"
+                                class="px-4 py-2 rounded-full bg-[#0e4f23] text-white font-medium hover:opacity-90 transition-opacity">Add
+                                Expense</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Grocery & Household List -->
+            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
+                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Grocery & Household List</div>
+                <div class="p-6 flex-1">
+                    <form id="groceryForm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-[13px] border-collapse table-fixed min-w-[500px]">
+                                <colgroup>
+                                    <col style="width: 5%;">
+                                    <col style="width: 30%;">
+                                    <col style="width: 10%;">
+                                    <col style="width: 18%;">
+                                    <col style="width: 27%;">
+                                    <col style="width: 10%;">
+                                </colgroup>
+                                <thead>
+                                    <tr class="bg-gray-100 font-semibold text-left">
+                                        <th class="border border-gray-200 p-2 text-center">✓</th>
+                                        <th class="border border-gray-200 p-2">Item</th>
+                                        <th class="border border-gray-200 p-2">Qty</th>
+                                        <th class="border border-gray-200 p-2">Est. Cost</th>
+                                        <th class="border border-gray-200 p-2">Budget Category</th>
+                                        <th class="border border-gray-200 p-2">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="groceryTableBody">
+                                    <tr id="groceryInputRow" class="hover:bg-gray-50">
+                                        <td class="border border-gray-200 p-2"></td>
+                                        <td class="border border-gray-200 p-2">
+                                            <input type="text" id="groceryItem" placeholder="Item" required
+                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="border border-gray-200 p-2">
+                                            <input type="number" id="groceryQty" placeholder="Qty" min="1" value="1"
+                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="border border-gray-200 p-2">
+                                            <input type="number" id="groceryCost" placeholder="Est. Cost" min="0"
+                                                step="0.01" required
+                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="border border-gray-200 p-2">
+                                            <select id="groceryBudgetCat"
+                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs bg-white">
+                                                <option value="">Budget Category</option>
+                                                <option>Groceries</option>
+                                                <option>Kids/School</option>
+                                                <option>Transport</option>
+                                                <option>Utilities</option>
+                                                <option>Home Mortgage</option>
+                                                <option>Subscription</option>
+                                                <option>Savings</option>
+                                                <option>Others</option>
+                                            </select>
+                                        </td>
+                                        <td class="border border-gray-200 p-2"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="text-[13px] text-gray-500 italic">Type items directly into the last row above.
+                            </div>
+                            <button type="submit"
+                                class="px-6 py-2 rounded-full bg-[#0e4f23] text-white text-sm font-medium hover:opacity-90 transition-opacity">Add
+                                to List</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        const categories = [
+            "Groceries",
+            "Kids/School",
+            "Transport",
+            "Utilities",
+            "Home Mortgage",
+            "Subscription",
+            "Savings",
+            "Others"
+        ];
+
+        let totalSpent = 0;
+        const categoryTotals = {};
+        categories.forEach((c) => (categoryTotals[c] = 0));
+
+        const categoryColors = {
+            "Groceries": "#8bc34a",
+            "Kids/School": "#ffb74d",
+            "Transport": "#4dd0e1",
+            "Utilities": "#ba68c8",
+            "Home Mortgage": "#ef5350",
+            "Subscription": "#66bb6a",
+            "Savings": "#ffd54f",
+            "Others": "#90a4ae"
+        };
+
+        function formatCurrency(value) {
+            const num = isNaN(value) ? 0 : value;
+            return "₱ " + num.toLocaleString("en-PH", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function updateSummary() {
+            const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
+
+            document.getElementById("totalSpentDisplay").textContent =
+                formatCurrency(totalSpent);
+
+            let percent = 0;
+            if (budgetLimit > 0) {
+                percent = (totalSpent / budgetLimit) * 100;
+            }
+
+            document.getElementById("budgetUsedLabel").textContent =
+                `${percent.toFixed(1)}% Budget Used`;
+
+            const remaining = budgetLimit - totalSpent;
+            document.getElementById("remainingDisplay").textContent =
+                "Remaining: " + formatCurrency(remaining);
+
+            updateEcoCheckbox();
+        }
+
+        function drawPieChart() {
+            const canvas = document.getElementById("pieChart");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            // Accounting for border padding if needed, but simple radius works
+            const radius = Math.min(width, height) / 2 - 2;
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (totalSpent <= 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = "#e8f5e9";
+                ctx.fill();
+                return;
+            }
+
+            let startAngle = -Math.PI / 2;
+
+            categories.forEach((cat) => {
+                const value = categoryTotals[cat];
+                if (!value) return;
+
+                const sliceAngle = (value / totalSpent) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = categoryColors[cat] || "#ccc";
+                ctx.fill();
+                startAngle += sliceAngle;
+            });
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+        }
+
+        function updateCategorySummary() {
+            const container = document.getElementById("categorySummary");
+            container.innerHTML = "";
+            categories.forEach((cat) => {
+                const amount = categoryTotals[cat] || 0;
+                if (amount <= 0) return; // Only show active categories to save space if desired, or keep logic same
+
+                const percent =
+                    totalSpent > 0 && amount > 0
+                        ? " (" + ((amount / totalSpent) * 100).toFixed(1) + "%)"
+                        : "";
+
+                const row = document.createElement("div");
+                row.className = "flex justify-between items-center mb-1.5";
+
+                const left = document.createElement("div");
+                left.className = "flex items-center gap-2";
+
+                // tiny color dot
+                const dot = document.createElement("div");
+                dot.className = "w-2.5 h-2.5 rounded-full";
+                dot.style.backgroundColor = categoryColors[cat] || "#ccc";
+                left.appendChild(dot);
+
+                const name = document.createElement("span");
+                name.className = "font-medium";
+                name.textContent = cat;
+                left.appendChild(name);
+
+                const right = document.createElement("div");
+                right.className = "flex items-center gap-2";
+
+                const val = document.createElement("span");
+                val.className = "opacity-90";
+                val.textContent = formatCurrency(amount) + percent;
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.textContent = "Clear";
+                btn.className = "btn-clear-cat text-[11px] px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors";
+                btn.dataset.category = cat;
+
+                right.appendChild(val);
+                right.appendChild(btn);
+
+                row.appendChild(left);
+                row.appendChild(right);
+
+                container.appendChild(row);
+            });
+        }
+
+        function updateCategoryView() {
+            const listDiv = document.getElementById("categoryList");
+            listDiv.innerHTML = "";
+            const wrapper = document.createElement("div");
+            wrapper.className = "space-y-1.5";
+
+            categories.forEach((cat) => {
+                const row = document.createElement("div");
+                row.className = "flex justify-between text-[13px]";
+
+                const nameDiv = document.createElement("div");
+                nameDiv.className = "flex items-center gap-2";
+
+                // Legend bar
+                const bar = document.createElement("div");
+                bar.className = "w-4 h-0.5";
+                bar.style.backgroundColor = "#cfd8dc"; // default from original CSS
+
+                const name = document.createElement("span");
+                name.textContent = cat;
+                nameDiv.appendChild(bar);
+                nameDiv.appendChild(name);
+
+                const amount = categoryTotals[cat] || 0;
+                const percent =
+                    totalSpent > 0 ? ((amount / totalSpent) * 100).toFixed(1) : "0.0";
+
+                const val = document.createElement("div");
+                val.textContent = `${percent}%`;
+
+                row.appendChild(nameDiv);
+                row.appendChild(val);
+                wrapper.appendChild(row);
+            });
+
+            listDiv.appendChild(wrapper);
+            drawPieChart();
+            updateCategorySummary();
+        }
+
+        function updateEcoCheckbox() {
+            const eco = document.getElementById("ecoCheckbox");
+            const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
+            const pendingAmount = Number(
+                document.getElementById("expenseAmount").value
+            ) || 0;
+
+            if (budgetLimit <= 0) {
+                eco.checked = false;
+                return;
+            }
+
+            const projectedTotal = totalSpent + pendingAmount;
+            eco.checked = projectedTotal <= budgetLimit;
+        }
+
+        function addToTotals(amount, category) {
+            totalSpent += amount;
+            if (totalSpent < 0) totalSpent = 0;
+
+            if (category && categoryTotals.hasOwnProperty(category)) {
+                categoryTotals[category] += amount;
+                if (categoryTotals[category] < 0) categoryTotals[category] = 0;
+            }
+
+            updateSummary();
+            updateCategoryView();
+        }
+
+        function initHeaderDate() {
+            const todayLabel = document.getElementById("todayLabel");
+            const today = new Date();
+            todayLabel.textContent =
+                "Today: " + today.toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                });
+
+            const monthSelect = document.getElementById("monthSelect");
+            const months = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+            months.forEach((m, idx) => {
+                const opt = document.createElement("option");
+                opt.value = idx + 1;
+                opt.textContent = m;
+                if (idx === today.getMonth()) opt.selected = true;
+                monthSelect.appendChild(opt);
+            });
+
+            const yearSelect = document.getElementById("yearSelect");
+            const currentYear = today.getFullYear();
+            for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+                const opt = document.createElement("option");
+                opt.value = y;
+                opt.textContent = y;
+                if (y === currentYear) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        function clearExpenseForm() {
+            document.getElementById("expenseAmount").value = "";
+            document.getElementById("expenseCategory").value = "";
+            document.getElementById("expenseDate").value = "";
+            document.getElementById("expenseNotes").value = "";
+            document.getElementById("ecoCheckbox").checked = false;
+            updateEcoCheckbox();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initHeaderDate();
+            updateSummary();
+            updateCategoryView();
+
+            const expenseForm = document.getElementById("expenseForm");
+            expenseForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+
+                const amount = Number(document.getElementById("expenseAmount").value);
+                const category = document.getElementById("expenseCategory").value;
+                const date = document.getElementById("expenseDate").value;
+
+                if (!amount || amount <= 0 || !category || !date) {
+                    alert("Please fill in Amount, Category, and Date.");
+                    return;
+                }
+
+                addToTotals(amount, category);
+                clearExpenseForm();
+            });
+
+            document
+                .getElementById("expenseAmount")
+                .addEventListener("input", updateEcoCheckbox);
+
+            document
+                .getElementById("budgetInput")
+                .addEventListener("input", () => {
+                    updateSummary();
+                    updateEcoCheckbox();
+                });
+
+            document
+                .getElementById("clearExpenseBtn")
+                .addEventListener("click", () => clearExpenseForm());
+
+            // Grocery list
+            const groceryForm = document.getElementById("groceryForm");
+            groceryForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+
+                const item = document.getElementById("groceryItem").value.trim();
+                const qty = Number(document.getElementById("groceryQty").value) || 1;
+                const cost = Number(document.getElementById("groceryCost").value);
+                const budgetCat = document.getElementById("groceryBudgetCat").value;
+
+                if (!item || !cost) {
+                    alert("Please provide an item name and estimated cost.");
+                    return;
+                }
+
+                const tbody = document.getElementById("groceryTableBody");
+                const inputRow = document.getElementById("groceryInputRow");
+
+                const row = document.createElement("tr");
+                row.className = "hover:bg-gray-50 border-b border-gray-100";
+
+                const checkCell = document.createElement("td");
+                checkCell.className = "border border-gray-200 p-2 text-center";
+                const check = document.createElement("input");
+                check.type = "checkbox";
+                check.checked = true;
+                check.className = "accent-[#0e4f23]";
+                checkCell.appendChild(check);
+
+                const itemCell = document.createElement("td");
+                itemCell.className = "border border-gray-200 p-2";
+                itemCell.textContent = item;
+
+                const qtyCell = document.createElement("td");
+                qtyCell.className = "border border-gray-200 p-2 text-center";
+                qtyCell.textContent = qty;
+
+                const costCell = document.createElement("td");
+                costCell.className = "border border-gray-200 p-2 text-right";
+                costCell.textContent = formatCurrency(cost);
+
+                const categoryForTotals = budgetCat || "Groceries";
+                const budgetCatCell = document.createElement("td");
+                budgetCatCell.className = "border border-gray-200 p-2";
+                budgetCatCell.textContent = categoryForTotals;
+
+                const actionCell = document.createElement("td");
+                actionCell.className = "border border-gray-200 p-2 text-center";
+                const removeBtn = document.createElement("button");
+                removeBtn.type = "button";
+                removeBtn.textContent = "Remove";
+                removeBtn.className = "btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors";
+                actionCell.appendChild(removeBtn);
+
+                row.appendChild(checkCell);
+                row.appendChild(itemCell);
+                row.appendChild(qtyCell);
+                row.appendChild(costCell);
+                row.appendChild(budgetCatCell);
+                row.appendChild(actionCell);
+
+                // store data so we can subtract later
+                row.dataset.amount = cost;
+                row.dataset.category = categoryForTotals;
+
+                // insert ABOVE input row so input row stays at the bottom
+                tbody.insertBefore(row, inputRow);
+
+                addToTotals(cost, categoryForTotals);
+
+                groceryForm.reset();
+                document.getElementById("groceryQty").value = 1;
+            });
+
+            // Remove button in grocery table (event delegation)
+            document
+                .getElementById("groceryTableBody")
+                .addEventListener("click", (e) => {
+                    if (!e.target.classList.contains("btn-remove")) return;
+
+                    const row = e.target.closest("tr");
+                    if (!row || !row.dataset.amount) return;
+
+                    const amount = parseFloat(row.dataset.amount) || 0;
+                    const category = row.dataset.category;
+
+                    if (amount && category) {
+                        addToTotals(-amount, category);
+                    }
+
+                    row.remove();
+                });
+
+            // Clear category buttons in Monthly Budget Summary
+            document
+                .getElementById("categorySummary")
+                .addEventListener("click", (e) => {
+                    if (!e.target.classList.contains("btn-clear-cat")) return;
+
+                    const cat = e.target.dataset.category;
+                    if (!cat || !categoryTotals.hasOwnProperty(cat)) return;
+
+                    const amount = categoryTotals[cat] || 0;
+                    if (amount > 0) {
+                        addToTotals(-amount, cat);
+                    }
+                });
+        });
+    </script>
 </body>
+
+</html>

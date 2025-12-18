@@ -566,6 +566,42 @@ def budgetexpenses():
     
     return render_template('budget.html', first=first, today=today)
 
+@app.route('/mood')
+def mood():
+    # require login
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Please sign in to view your mood tracker.')
+        return redirect(url_for('index'))
+
+    first = session.get('user_first')
+    today = datetime.now().strftime('%B %d, %Y')
+    
+    # Placeholder data - in a real app, fetch from DB
+    data = {
+        'sleep': '7.5',
+        'water': '6',
+        'activity': 'Light Stretching',
+        'stress': 5,
+        'mood': 'Neutral'
+    }
+    
+    return render_template('mood.html', first=first, today=today, data=data)
+
+
+@app.route('/update_mood', methods=['POST'])
+def update_mood():
+    user_email = session.get('user_email')
+    if not user_email:
+        return redirect(url_for('index'))
+    
+    mood_val = request.form.get('mood')
+    # Save to DB logic here... 
+    # For now just flash and redirect
+    flash(f"Mood logged: {mood_val}")
+    
+    return redirect(url_for('mood'))
+
 
 @app.route('/logout')
 def logout():

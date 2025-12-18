@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 
-<body class="bg-brand-blue text-brand-green font-sans m-0 p-0">
+<body class="bg-[#a5dbe5] text-[#104b0b] font-['Poppins'] m-0 p-0">
 
     {% include 'navbar.html' %}
 
@@ -20,38 +20,47 @@
 
         <!-- Daily Task -->
         <div class="w-full md:w-[28%] bg-white rounded-xl shadow-md flex flex-col min-h-[340px] overflow-hidden">
-            <div class="p-4 text-center font-bold text-brand-green bg-brand-yellow rounded-t-xl">
+            <div class="p-4 text-center font-bold text-[#104b0b] bg-[#fecc47] rounded-t-xl text-lg border-b-0">
                 Daily Task
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
                 <div>
+                    {% if tasks %}
+                    {% for task in tasks[:3] %}
                     <div class="flex items-center gap-2 mb-4">
                         <input type="checkbox"
-                            class="w-4 h-4 rounded border-gray-300 text-brand-green focus:ring-brand-green">
+                            class="w-4 h-4 rounded border-gray-300 text-[#104b0b] focus:ring-[#104b0b]">
+                        <span>{{ task.title }}</span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="flex items-center gap-2 mb-4">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300">
                         <span>task 1</span>
                     </div>
                     <div class="flex items-center gap-2 mb-4">
-                        <input type="checkbox"
-                            class="w-4 h-4 rounded border-gray-300 text-brand-green focus:ring-brand-green">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300">
                         <span>task 2</span>
                     </div>
                     <div class="flex items-center gap-2 mb-4">
-                        <input type="checkbox"
-                            class="w-4 h-4 rounded border-gray-300 text-brand-green focus:ring-brand-green">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300">
                         <span>task 3</span>
                     </div>
+                    {% endif %}
                     <p class="mt-4 font-medium">Progress: 45%</p>
                 </div>
-                <button
-                    class="block w-full md:w-auto mx-auto mt-6 px-8 py-3 bg-brand-yellow text-white text-base rounded-full hover:opacity-90 transition-opacity">
-                    View All Task
-                </button>
+                <a href="{{ url_for('tasks') }}" class="block w-full md:w-auto mx-auto mt-6">
+                    <button
+                        class="w-full md:w-auto px-8 py-3 bg-[#fecc47] text-white text-base rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
+                        View All Task
+                    </button>
+                </a>
             </div>
         </div>
 
         <!-- Budget & Expense -->
         <div class="w-full md:w-[28%] bg-white rounded-xl shadow-md flex flex-col min-h-[340px] overflow-hidden">
-            <div class="p-4 text-center font-bold text-white bg-brand-orange rounded-t-xl">
+            <div class="p-4 text-center font-bold text-white bg-[#fa990e] rounded-t-xl text-lg border-b-0">
                 Budget & Expense
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
@@ -60,16 +69,18 @@
                     <p>Total Spent:</p>
                     <p>Top Expense:</p>
                 </div>
-                <button
-                    class="block w-full md:w-auto mx-auto mt-6 px-8 py-3 bg-brand-orange text-white text-base rounded-full hover:opacity-90 transition-opacity">
-                    View Budget
-                </button>
+                <a href="{{ url_for('budgetexpenses') }}" class="block w-full md:w-auto mx-auto mt-6">
+                    <button
+                        class="w-full md:w-auto px-8 py-3 bg-[#fa990e] text-white text-base rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
+                        View Budget
+                    </button>
+                </a>
             </div>
         </div>
 
         <!-- Mood & Wellness -->
         <div class="w-full md:w-[28%] bg-white rounded-xl shadow-md flex flex-col min-h-[340px] overflow-hidden">
-            <div class="p-4 text-center font-bold text-white bg-brand-light-green rounded-t-xl">
+            <div class="p-4 text-center font-bold text-white bg-[#5a8d26] rounded-t-xl text-lg border-b-0">
                 Mood & Wellness
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
@@ -78,10 +89,12 @@
                     <p>Stress Level:</p>
                     <p>Wellness:</p>
                 </div>
-                <button
-                    class="block w-full md:w-auto mx-auto mt-6 px-8 py-3 bg-brand-light-green text-white text-base rounded-full hover:opacity-90 transition-opacity">
-                    Log Mood
-                </button>
+                <a href="#" class="block w-full md:w-auto mx-auto mt-6">
+                    <button
+                        class="w-full md:w-auto px-8 py-3 bg-[#5a8d26] text-white text-base rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
+                        Log Mood
+                    </button>
+                </a>
             </div>
         </div>
 
@@ -89,20 +102,17 @@
 
 
     <!-- SNAPSHOT BOXES -->
-    <div class="w-[85%] mx-auto bg-white mt-4 p-10 rounded-xl shadow-sm">
+    <div class="w-[85%] mx-auto bg-white mt-4 p-10 rounded-xl shadow-sm md:w-[85%]">
         <strong class="text-xl">Today's Snapshot:</strong>
     </div>
 
     <div
-        class="w-[85%] mx-auto bg-white mt-4 mb-12 p-10 rounded-xl shadow-sm flex flex-col md:flex-row justify-between text-xl gap-4 md:gap-0">
+        class="w-[85%] mx-auto bg-white mt-4 mb-12 p-10 rounded-xl shadow-sm flex flex-col md:flex-row justify-between text-xl gap-4 md:gap-0 md:w-[85%]">
         <span>Task: 3 Pending</span>
         <span>Budget: ______ remaining</span>
         <span>Mood: </span>
     </div>
 
-    <script>
-        // No redundant scripts needed for dashboard header anymore.
-    </script>
 </body>
 
 </html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MomCare Mood & Wellness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-[#d1e9f0] text-[#23423c] font-sans m-0 p-0">
+
+    {% include 'navbar.html' %}
+
+    <main class="max-w-[1200px] mx-auto p-6 md:p-8">
+
+        <div class="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-8">
+
+            <!-- Left Column -->
+            <div class="flex flex-col gap-6">
+
+                <!-- Mood Selector Card -->
+                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <div class="bg-[#1f4f1e] text-white text-center py-4 rounded-t-3xl">
+                        <h5 class="text-lg font-semibold m-0">How are you feeling today, Mom?</h5>
+                    </div>
+                    <div class="p-6">
+                        <form id="moodForm" action="/update_mood" method="POST">
+                            <input type="hidden" name="mood" id="moodVal">
+                            <div class="flex justify-around text-center py-2">
+                                <div class="cursor-pointer transition-transform hover:scale-110"
+                                    onclick="submitMood('Happy')">
+                                    <div
+                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#5cb85c] mb-2 mx-auto">
+                                        <i class="far fa-smile"></i>
+                                    </div>
+                                    <p class="text-sm font-bold m-0">Happy</p>
+                                </div>
+                                <div class="cursor-pointer transition-transform hover:scale-110"
+                                    onclick="submitMood('Neutral')">
+                                    <div
+                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#5bc0de] mb-2 mx-auto">
+                                        <i class="far fa-meh"></i>
+                                    </div>
+                                    <p class="text-sm font-bold m-0">Neutral</p>
+                                </div>
+                                <div class="cursor-pointer transition-transform hover:scale-110"
+                                    onclick="submitMood('Tired')">
+                                    <div
+                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#d9534f] mb-2 mx-auto">
+                                        <i class="far fa-frown"></i>
+                                    </div>
+                                    <p class="text-sm font-bold m-0">Tired</p>
+                                </div>
+                                <div class="cursor-pointer transition-transform hover:scale-110"
+                                    onclick="submitMood('Stressed')">
+                                    <div
+                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#333] mb-2 mx-auto">
+                                        <i class="far fa-tired"></i>
+                                    </div>
+                                    <p class="text-sm font-bold m-0">Stressed</p>
+                                    <span class="text-[0.6rem] text-gray-500">(Workload)</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Metrics Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Rest & Sleep -->
+                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
+                        <div class="font-bold text-sm flex items-center mb-2">
+                            <i class="fas fa-moon mr-2"></i>Rest & Sleep
+                        </div>
+                        <div class="text-2xl font-extrabold my-2">{{ data.sleep if data and data.sleep else '7.5' }}
+                            hours</div>
+                        <div class="text-[0.7rem] leading-tight">You slept 7-8 hrs for 4 days this week</div>
+                    </div>
+
+                    <!-- Hydration -->
+                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
+                        <div class="font-bold text-sm flex items-center mb-2">
+                            <i class="fas fa-tint mr-2"></i>Hydration
+                        </div>
+                        <div class="text-2xl font-extrabold my-2">{{ data.water if data and data.water else '6' }}/8
+                            glasses</div>
+                        <div class="text-[0.7rem] leading-tight">Water Today:</div>
+                    </div>
+
+                    <!-- Physical Wellbeing -->
+                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
+                        <div class="font-bold text-sm flex items-center mb-2">
+                            <i class="fas fa-running mr-2"></i>Physical Wellbeing
+                        </div>
+                        <div class="text-xl font-extrabold my-2 leading-tight">{{ data.activity if data and
+                            data.activity else 'Light Stretching' }}</div>
+                        <div class="text-[0.7rem] leading-tight">Activity today:</div>
+                    </div>
+                </div>
+
+                <!-- Emotional & Mental Wellness -->
+                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <div class="bg-[#1f4f1e] text-white py-3 rounded-t-3xl text-center">
+                        <p class="m-0 font-bold">Emotional & Mental Wellness</p>
+                    </div>
+                    <div class="p-6">
+                        <label class="text-xs font-bold block mb-2">Stress Level</label>
+                        <input type="range" min="1" max="10" value="{{ data.stress if data and data.stress else 5 }}"
+                            disabled
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed accent-[#5a8254]">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Low</span><span>High</span>
+                        </div>
+                        <p class="text-center mt-4 italic text-[#2d5a27] font-medium">"You've been gaining more energy
+                            this week 💛"</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column -->
+            <div class="flex flex-col gap-6">
+
+                <!-- Weekly Summary -->
+                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <div class="bg-[#1f4f1e] text-white py-4 rounded-t-3xl text-center">
+                        <h5 class="text-lg font-semibold m-0">Weekly Summary</h5>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-xs text-gray-500 mb-4 text-center">Last 7 Days</p>
+                        <div class="h-[250px] w-full">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                        <p class="mt-4 text-xs text-center">
+                            Your most frequent mood this week was <span class="text-[#5bc0de] font-bold">*{{ data.mood
+                                if data and data.mood else 'Neutral' }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Wellness Tip -->
+                <div class="pl-2">
+                    <p class="font-bold text-[#2d5a27] mb-1">Wellness Tip for Today:</p>
+                    <p class="italic text-[#23423c]">"Take a deep breath and stretch for a few minutes."</p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function submitMood(val) {
+            document.getElementById('moodVal').value = val;
+            document.getElementById('moodForm').submit();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+
+            // Mock data for weekly mood summary (0=Tired, 1=Stressed, 2=Neutral, 3=Happy)
+            // Just visualization
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Mood Score',
+                        data: [3, 2, 2, 1, 3, 3, 2], // Mock data
+                        backgroundColor: '#90b17b',
+                        borderColor: '#5a8254',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 4,
+                            ticks: {
+                                callback: function (value) {
+                                    const moods = ['', 'Tired', 'Stressed', 'Neutral', 'Happy'];
+                                    return moods[value] || '';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
