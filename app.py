@@ -685,7 +685,57 @@ def profile(user_id):
     first = session.get('user_first')
     today = datetime.now().strftime('%B %d, %Y')
     
+    # If a profile image was uploaded and saved in static/images, expose its URL
+    images_dir = Path(__file__).parent / 'static' / 'images'
+    profile_filename = f"user_{user_id}_profile.jpg"
+    if (images_dir / profile_filename).exists():
+        user['profile_pic_url'] = url_for('static', filename=f'images/{profile_filename}')
+    else:
+        user['profile_pic_url'] = None
+
     return render_template('profile.html', user=user, first=first, today=today)
+
+
+@app.route('/profile/<int:user_id>/upload_photo', methods=['POST'])
+def upload_profile_photo(user_id):
+    # allow only the profile owner to upload
+    user_email = session.get('user_email')
+    if not user_email or session.get('user_id') != user_id:
+        flash('Unauthorized upload attempt.')
+        return redirect(url_for('profile', user_id=user_id))
+
+    if 'photo' not in request.files:
+        flash('No file part.')
+        return redirect(url_for('profile', user_id=user_id))
+
+    file = request.files['photo']
+    if file.filename == '':
+        flash('No selected file.')
+        return redirect(url_for('profile', user_id=user_id))
+
+    # basic validation of allowed extensions
+    ALLOWED_EXT = {'.png', '.jpg', '.jpeg', '.gif'}
+    _, ext = os.path.splitext(file.filename.lower())
+    if ext not in ALLOWED_EXT:
+        flash('Unsupported file type. Use PNG/JPG/GIF.')
+        return redirect(url_for('profile', user_id=user_id))
+
+    # ensure images dir exists
+    images_dir = Path(__file__).parent / 'static' / 'images'
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    # save with deterministic filename for the user
+    filename = f'user_{user_id}_profile.jpg'
+    save_path = images_dir / filename
+    try:
+        # convert and save: we simply stream to disk
+        file.save(save_path)
+        flash('Profile photo updated.')
+    except Exception as e:
+        print(f"Error saving file: {e}")
+        flash('Failed to save photo.')
+
+    return redirect(url_for('profile', user_id=user_id))
 
 @app.route('/profile/edit/<int:user_id>')
 def edit_profile(user_id):

@@ -23,25 +23,7 @@
 
     <main class="max-w-[1400px] mx-auto p-6 md:p-10">
 
-        <!-- Page Header -->
-        <div
-            class="flex flex-col md:flex-row items-center justify-between mb-8 bg-[#1f4f1e] text-white p-4 rounded-xl shadow-lg">
-            <div class="flex items-center gap-4">
-                <!-- Logo optional if already in navbar, keeping for completeness of 'header' migration if desired, utilizing icon instead -->
-                <i class="fas fa-wallet text-3xl text-[#f9d24b]"></i>
-                <div>
-                    <h1 class="text-2xl font-bold m-0">Budget & Expenses</h1>
-                    <div class="text-sm opacity-90 mt-1" id="todayLabel">Today:</div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-4 mt-4 md:mt-0 bg-white text-[#23423c] px-3 py-2 rounded-lg">
-                <select id="monthSelect"
-                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium"></select>
-                <select id="yearSelect"
-                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium ml-2"></select>
-            </div>
-        </div>
+        <!-- Header removed as requested -->
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -448,34 +430,63 @@
         function initHeaderDate() {
             const todayLabel = document.getElementById("todayLabel");
             const today = new Date();
-            todayLabel.textContent =
-                "Today: " + today.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric"
-                });
+            if (todayLabel) {
+                todayLabel.textContent =
+                    "Today: " + today.toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric"
+                    });
+            }
 
             const monthSelect = document.getElementById("monthSelect");
             const months = [
                 "January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"
             ];
-            months.forEach((m, idx) => {
-                const opt = document.createElement("option");
-                opt.value = idx + 1;
-                opt.textContent = m;
-                if (idx === today.getMonth()) opt.selected = true;
-                monthSelect.appendChild(opt);
-            });
+            if (monthSelect) {
+                months.forEach((m, idx) => {
+                    const opt = document.createElement("option");
+                    opt.value = idx + 1;
+                    opt.textContent = m;
+                    if (idx === today.getMonth()) opt.selected = true;
+                    monthSelect.appendChild(opt);
+                });
+            }
 
             const yearSelect = document.getElementById("yearSelect");
             const currentYear = today.getFullYear();
-            for (let y = currentYear - 2; y <= currentYear + 5; y++) {
-                const opt = document.createElement("option");
-                opt.value = y;
-                opt.textContent = y;
-                if (y === currentYear) opt.selected = true;
-                yearSelect.appendChild(opt);
+            if (yearSelect) {
+                for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+                    const opt = document.createElement("option");
+                    opt.value = y;
+                    opt.textContent = y;
+                    if (y === currentYear) opt.selected = true;
+                    yearSelect.appendChild(opt);
+                }
+            }
+
+            // update visible combined label if present
+            const monthYearLabel = document.getElementById('monthYearLabel');
+            function refreshMonthYearLabel(){
+                if (!monthYearLabel) return;
+                const mIdx = monthSelect ? (parseInt(monthSelect.value, 10) - 1) : today.getMonth();
+                const yVal = yearSelect ? yearSelect.value : currentYear;
+                const mName = months[mIdx] || months[today.getMonth()];
+                monthYearLabel.textContent = `${mName} ${yVal}`;
+            }
+            if (monthYearLabel) {
+                refreshMonthYearLabel();
+                if (monthSelect) monthSelect.addEventListener('change', refreshMonthYearLabel);
+                if (yearSelect) yearSelect.addEventListener('change', refreshMonthYearLabel);
+
+                // clicking the white box will open the (hidden) select for accessibility
+                const monthPicker = document.getElementById('monthPicker');
+                if (monthPicker && monthSelect) {
+                    monthPicker.addEventListener('click', () => {
+                        monthSelect.focus();
+                    });
+                }
             }
         }
 

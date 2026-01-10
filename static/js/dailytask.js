@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Empty slots for previous month
         for (let i = 0; i < firstDay; i++) {
             const emptyCell = document.createElement('div');
+            emptyCell.className = 'calendar-empty p-2';
             calendarGrid.appendChild(emptyCell);
         }
 
@@ -43,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let d = 1; d <= daysInMonth; d++) {
             const dayCell = document.createElement('div');
             dayCell.textContent = d;
-            dayCell.className = 'calendar-day';
+            dayCell.className = 'calendar-day text-center px-2 py-1 rounded cursor-pointer hover:bg-sky-100 text-sm';
 
             // Check if matches selectedDate
             if (d === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
@@ -76,8 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // 24 hours
         for (let i = 0; i < 24; i++) {
             const hourDiv = document.createElement('div');
-            hourDiv.className = 'timeline-hour';
+            hourDiv.className = 'timeline-hour h-14 border-t border-gray-200 relative';
             hourDiv.setAttribute('data-hour', `${i}:00`);
+            const label = document.createElement('div');
+            label.className = 'absolute -left-16 -top-1 text-xs text-gray-500';
+            label.textContent = `${i}:00`;
+            hourDiv.appendChild(label);
             timelineGrid.appendChild(hourDiv);
         }
 
@@ -88,8 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         todaysTasks.forEach(task => {
             const taskEl = document.createElement('div');
-            taskEl.className = 'task-item';
-            if (task.is_priority) taskEl.classList.add('priority');
+            taskEl.className = 'task-item absolute left-4 right-4 rounded-md px-2 py-1 text-sm text-[#104b0b] shadow';
+            if (task.is_priority) taskEl.classList.add('priority', 'border-2', 'border-red-600');
 
             // Position
             const startHour = task.start_time; // e.g. 9.5
