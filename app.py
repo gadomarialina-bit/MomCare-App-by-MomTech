@@ -16,8 +16,20 @@ DB_PATH = Path(__file__).parent / 'users.db'
 
 
 def get_db() -> Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # Create a short-lived connection with a higher timeout and pragmatic settings
+    # to reduce "database is locked" errors under concurrent access.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    try:
+        # Enable WAL mode for better concurrency (writers don't block readers)
+        conn.execute('PRAGMA journal_mode=WAL;')
+        # Moderate synchronous to improve performance while WAL is active
+        conn.execute('PRAGMA synchronous=NORMAL;')
+        # Enable foreign keys if used
+        conn.execute('PRAGMA foreign_keys=ON;')
+    except Exception:
+        # best-effort; don't fail if PRAGMA isn't supported
+        pass
     return conn
 
 
@@ -38,6 +50,23 @@ def init_db():
         )
         """
     )
+    # Ensure older DBs have the expected security columns
+    try:
+        cur.execute("PRAGMA table_info(users)")
+        user_cols = [r[1] for r in cur.fetchall()]
+        if 'security_question' not in user_cols:
+            try:
+                cur.execute("ALTER TABLE users ADD COLUMN security_question TEXT")
+            except Exception:
+                pass
+        if 'security_answer' not in user_cols:
+            try:
+                cur.execute("ALTER TABLE users ADD COLUMN security_answer TEXT")
+            except Exception:
+                pass
+    except Exception:
+        # best-effort, proceed without failing init
+        pass
     
     # Create monthly_budgets table
     cur.execute(
