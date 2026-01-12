@@ -389,27 +389,8 @@ def dashboard():
         cur.execute('SELECT * FROM tasks WHERE user_email = ? ORDER BY task_date DESC, start_time ASC LIMIT 10', (user_email,))
         rows = cur.fetchall()
         tasks = [dict(r) for r in rows]
-        
-        # Budget Limit
-        cur.execute("SELECT * FROM monthly_budgets WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
-        budget_row = cur.fetchone()
-        if budget_row:
-             budget_limit = budget_row['budget_limit']
-        
-        # Expenses & Totals
-        cur.execute("SELECT * FROM expenses WHERE user_email = ? AND expense_date LIKE ?", (user_email, f"{selected_month_iso}%"))
-        expenses_rows = cur.fetchall()
-        
-        cat_totals = {}
-        for row in expenses_rows:
-            amt = row['amount']
-            cat = row['category']
-            total_spent += amt
-            cat_totals[cat] = cat_totals.get(cat, 0) + amt
-            
-        if cat_totals:
-            top_expense_category = max(cat_totals, key=cat_totals.get)
-            
+        # Budget & expense functionality disabled — UI-only mode.
+        # Keep tasks loading but do not query or modify budget/expenses in the DB.
         conn.close()
 
     # Determine Status Indicator
@@ -748,27 +729,11 @@ def budgetexpenses():
         selected_month_iso = datetime.now().strftime('%Y-%m')
         selected_month = datetime.now().strftime('%B %Y')
         
-    conn = get_db()
-    cur = conn.cursor()
-    
-    # Fetch budget settings
-    cur.execute("SELECT * FROM monthly_budgets WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
-    budget_row = cur.fetchone()
-    budget_data = dict(budget_row) if budget_row else {'income': 0, 'budget_limit': 0}
-    
-    # Fetch expenses for the month
-    cur.execute("SELECT * FROM expenses WHERE user_email = ? AND expense_date LIKE ? ORDER BY expense_date DESC", (user_email, f"{selected_month_iso}%"))
-    expenses_rows = cur.fetchall()
-    expenses = [dict(r) for r in expenses_rows]
-    
-    # Fetch groceries for the month
-    cur.execute("SELECT * FROM grocery_items WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
-    grocery_rows = cur.fetchall()
-    groceries = [dict(r) for r in grocery_rows]
-
-    conn.close()
-
-    total_spent = sum(e['amount'] for e in expenses)
+    # Budget & expense backend disabled — present UI only with placeholder data.
+    budget_data = {'income': 0, 'budget_limit': 0}
+    expenses = []
+    groceries = []
+    total_spent = 0
     
     return render_template('budget.html', first=first, today=today, 
                            selected_month=selected_month, 
@@ -783,59 +748,24 @@ def add_grocery():
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-
-    data = request.get_json() or {}
-    item = data.get('item')
-    qty = data.get('qty', 1)
-    cost = data.get('cost', 0)
-    category = data.get('category', 'Groceries')
-    month_iso = data.get('month_iso')
-
-    if not item or not month_iso:
-        return jsonify({'error': 'missing fields'}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO grocery_items (user_email, item_name, quantity, estimated_cost, category, month_iso, is_checked, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
-        (user_email, item, qty, cost, category, month_iso, datetime.now().isoformat())
-    )
-    grocery_id = cur.lastrowid
-    conn.commit()
-    conn.close()
-
-    return jsonify({'ok': True, 'id': grocery_id})
+    # UI-only mode: accept request but do not persist to the DB.
+    return jsonify({'ok': True, 'note': 'ui-only'})
 
 @app.route('/api/budget/grocery/delete/<int:grocery_id>', methods=['POST'])
 def delete_grocery(grocery_id):
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-    
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM grocery_items WHERE id = ? AND user_email = ?", (grocery_id, user_email))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'ok': True})
+    # UI-only: pretend deletion succeeded without altering DB
+    return jsonify({'ok': True, 'note': 'ui-only'})
 
 @app.route('/api/budget/grocery/toggle/<int:grocery_id>', methods=['POST'])
 def toggle_grocery(grocery_id):
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-
-    data = request.get_json() or {}
-    is_checked = 1 if data.get('checked') else 0
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE grocery_items SET is_checked = ? WHERE id = ? AND user_email = ?", (is_checked, grocery_id, user_email))
-    conn.commit()
-    conn.close()
-
-    return jsonify({'ok': True})
+    # UI-only: acknowledge toggle but do not update DB
+    return jsonify({'ok': True, 'note': 'ui-only'})
 @app.route('/mood')
 def mood():
     # require login
@@ -878,72 +808,24 @@ def add_expense():
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-
-    data = request.get_json() or {}
-    amount = data.get('amount')
-    category = data.get('category')
-    date_str = data.get('date')
-    notes = data.get('notes', '')
-    is_eco = 1 if data.get('is_eco') else 0
-
-    if not amount or not category or not date_str:
-        return jsonify({'error': 'missing fields'}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO expenses (user_email, amount, category, expense_date, notes, is_eco, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_email, amount, category, date_str, notes, is_eco, datetime.now().isoformat())
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({'ok': True})
+    # UI-only: accept expense submissions but do not persist
+    return jsonify({'ok': True, 'note': 'ui-only'})
 
 @app.route('/api/budget/expense/delete/<int:expense_id>', methods=['POST'])
 def delete_expense(expense_id):
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-    
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM expenses WHERE id = ? AND user_email = ?", (expense_id, user_email))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'ok': True})
+    # UI-only: acknowledge deletion without DB change
+    return jsonify({'ok': True, 'note': 'ui-only'})
 
 @app.route('/api/budget/settings', methods=['POST'])
 def update_budget_settings():
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'unauthenticated'}), 401
-
-    data = request.get_json() or {}
-    month_iso = data.get('month_iso')
-    income = data.get('income', 0)
-    budget_limit = data.get('budget_limit', 0)
-
-    if not month_iso:
-        return jsonify({'error': 'missing month'}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO monthly_budgets (user_email, month_iso, income, budget_limit)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(user_email, month_iso) DO UPDATE SET
-            income=excluded.income,
-            budget_limit=excluded.budget_limit
-        """,
-        (user_email, month_iso, income, budget_limit)
-    )
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'ok': True})
+    # UI-only: accept settings but do not save
+    return jsonify({'ok': True, 'note': 'ui-only'})
 
 
 @app.route('/logout')
