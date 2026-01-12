@@ -2,16 +2,74 @@
 <header class="bg-green-900 text-white">
     <div class="max-w-7xl m-auto px-6 py-6">
         <div class="flex items-center justify-between relative">
+            {% if request.endpoint == 'profile' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">My Account</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'mood' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Mood & Wellness</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'budgetexpenses' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Budget & Expenses</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'tasks' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Slay your day Mommy!</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% else %}
             <div class="flex items-center gap-6">
                 <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
                     class="h-16 w-auto" />
                 <div>
-                    <h1 class="text-l lg:text-xl font-light">How are you today, {{ first or session.get('user_first') or
+                    <h1 class="text-l lg:text-xl font-bold">How are you today, {{ first or session.get('user_first') or
                         'User' }}?</h1>
                     <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
                             }}</span></p>
                 </div>
             </div>
+            {% endif %}
+
+            {% if request.endpoint == 'budgetexpenses' or request.endpoint == 'dashboard' %}
+            <div class="hidden md:flex items-center mr-4">
+                <form id="month-form" action="{{ request.path }}" method="get"
+                    class="relative group cursor-pointer z-0">
+                    <div
+                        class="bg-white text-green-900 px-4 py-3 rounded shadow-lg flex items-center justify-between w-[200px]">
+                        <span class="font-medium text-center flex-1 text-left">{{ selected_month or 'Select Month'
+                            }}</span>
+                        <i class="fas fa-caret-down text-yellow-500 text-xl"></i>
+                    </div>
+                    <input id="month-input" name="month" type="month" data-month="{{ selected_month_iso or '' }}"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        aria-label="Select month" />
+                </form>
+            </div>
+            {% endif %}
 
             <button id="menu-toggle" class="p-3 md:p-2 rounded-md mr-2 focus:outline-none" aria-label="Open menu"
                 aria-expanded="false" aria-controls="menu-list">
@@ -77,6 +135,9 @@
     </div>
 </header>
 
+<!-- pale blue separator bar shown under header (profile style) -->
+<div class="h-3 bg-[#c9eef2]"></div>
+
 <script>
     const toggle = document.getElementById('menu-toggle');
     const sideMenu = document.getElementById('side-menu');
@@ -108,6 +169,24 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeSideMenu();
+        });
+    }
+
+    // budgetexpenses month picker behavior: set default and submit on change
+    const monthInput = document.getElementById('month-input');
+    const monthForm = document.getElementById('month-form');
+    if (monthInput && monthForm) {
+        if (!monthInput.value) {
+            const ds = monthInput.dataset.month;
+            if (ds) {
+                monthInput.value = ds;
+            } else {
+                const d = new Date();
+                monthInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+        }
+        monthInput.addEventListener('change', () => {
+            monthForm.submit();
         });
     }
 </script>

@@ -34,12 +34,101 @@ def init_db():
             email TEXT NOT NULL UNIQUE,
             birthdate TEXT,
             password_hash TEXT NOT NULL,
-            security_question TEXT,
             security_answer TEXT
         )
         """
     )
+    
+    # Create monthly_budgets table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS monthly_budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            month_iso TEXT NOT NULL,
+            income REAL DEFAULT 0,
+            budget_limit REAL DEFAULT 0,
+            UNIQUE(user_email, month_iso)
+        )
+        """
+    )
+
+    # Create expenses table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            amount REAL NOT NULL,
+            category TEXT NOT NULL,
+            expense_date TEXT NOT NULL,
+            notes TEXT,
+            is_eco INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+        """
+    )
+
+    # Create grocery_items table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS grocery_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            item_name TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            estimated_cost REAL,
+            category TEXT,
+            is_checked INTEGER DEFAULT 0,
+            month_iso TEXT,
+            created_at TEXT
+        )
+        """
+    )
+    # Migration: detect older schema variations and migrate data if necessary
+    cur.execute("PRAGMA table_info(grocery_items)")
+    cols = [r[1] for r in cur.fetchall()]
+    # If the DB has an old schema (item, qty, cost, month_str, purchased), rebuild table
+    old_style = set(["item", "qty", "cost", "month_str", "purchased"]).issubset(set(cols))
+    # If only month_iso is missing but month_str exists, add month_iso and copy values
+    if "month_iso" not in cols and "month_str" in cols and not old_style:
+        try:
+            cur.execute("ALTER TABLE grocery_items ADD COLUMN month_iso TEXT")
+            cur.execute("UPDATE grocery_items SET month_iso = month_str WHERE month_str IS NOT NULL")
+        except Exception:
+            # ignore; best-effort migration
+            pass
+
+    if old_style:
+        # Create new table with the desired schema
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS grocery_items_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                item_name TEXT NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                estimated_cost REAL,
+                category TEXT,
+                is_checked INTEGER DEFAULT 0,
+                month_iso TEXT,
+                created_at TEXT
+            )
+            """
+        )
+        # Copy and map old columns to new columns
+        try:
+            cur.execute(
+                "INSERT INTO grocery_items_new (id, user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, created_at) "
+                "SELECT id, user_email, item AS item_name, qty AS quantity, cost AS estimated_cost, category, purchased AS is_checked, month_str AS month_iso, NULL FROM grocery_items"
+            )
+            cur.execute("DROP TABLE grocery_items")
+            cur.execute("ALTER TABLE grocery_items_new RENAME TO grocery_items")
+        except Exception:
+            # If migration fails, ignore to avoid crashing init; developer should inspect DB
+            pass
     conn.commit()
+
 
 
     # Migrate existing users from users.json if present
@@ -267,19 +356,90 @@ if __name__ == '__main__':
 def dashboard():
     first = session.get('user_first')
     today = datetime.now().strftime('%B %d, %Y')
-
-    # load upcoming tasks for the signed-in user (limit 10)
     user_email = session.get('user_email')
+    
     tasks = []
+    budget_limit = 0
+    total_spent = 0
+    top_expense_category = "None"
+    
+    # Handle month selection
+    selected_month_iso = request.args.get('month')
+    selected_month = None
+    
+    if selected_month_iso:
+        try:
+            # Parse YYYY-MM
+            date_obj = datetime.strptime(selected_month_iso, '%Y-%m')
+            selected_month = date_obj.strftime('%B %Y')
+        except ValueError:
+            # Fallback if invalid format
+            selected_month_iso = datetime.now().strftime('%Y-%m')
+            selected_month = datetime.now().strftime('%B %Y')
+    else:
+        # Default to current month
+        selected_month_iso = datetime.now().strftime('%Y-%m')
+        selected_month = datetime.now().strftime('%B %Y')
+
     if user_email:
         conn = get_db()
         cur = conn.cursor()
+        
+        # Load upcoming tasks (limit 10)
         cur.execute('SELECT * FROM tasks WHERE user_email = ? ORDER BY task_date DESC, start_time ASC LIMIT 10', (user_email,))
         rows = cur.fetchall()
         tasks = [dict(r) for r in rows]
+        
+        # Budget Limit
+        cur.execute("SELECT * FROM monthly_budgets WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
+        budget_row = cur.fetchone()
+        if budget_row:
+             budget_limit = budget_row['budget_limit']
+        
+        # Expenses & Totals
+        cur.execute("SELECT * FROM expenses WHERE user_email = ? AND expense_date LIKE ?", (user_email, f"{selected_month_iso}%"))
+        expenses_rows = cur.fetchall()
+        
+        cat_totals = {}
+        for row in expenses_rows:
+            amt = row['amount']
+            cat = row['category']
+            total_spent += amt
+            cat_totals[cat] = cat_totals.get(cat, 0) + amt
+            
+        if cat_totals:
+            top_expense_category = max(cat_totals, key=cat_totals.get)
+            
         conn.close()
 
-    return render_template('dashboard.html', first=first, today=today, tasks=tasks)
+    # Determine Status Indicator
+    # Red > 100%, Orange >= 70%, Green < 70%
+    budget_color = "green"
+    budget_icon = "fa-check-circle"
+    
+    if budget_limit > 0:
+        pct = (total_spent / budget_limit) * 100
+        if pct > 100:
+            budget_color = "red"
+            budget_icon = "fa-exclamation-circle"
+        elif pct >= 70:
+            budget_color = "orange"
+            budget_icon = "fa-exclamation-triangle"
+    elif total_spent > 0:
+        # No budget set but spent money -> technically over budget/warning
+        budget_color = "red"
+        budget_icon = "fa-exclamation-circle"
+    else:
+        # No budget, no spend -> neutral/green
+        pass
+
+    return render_template('dashboard.html', first=first, today=today, tasks=tasks,
+                           budget_limit=budget_limit, total_spent=total_spent, 
+                           top_expense_category=top_expense_category,
+                           selected_month=selected_month,
+                           selected_month_iso=selected_month_iso,
+                           budget_color=budget_color,
+                           budget_icon=budget_icon)
 
 
 def init_tasks_table():
@@ -562,10 +722,120 @@ def delete_task(task_id):
 @app.route('/budgetexpenses')
 def budgetexpenses():
     first = session.get('user_first')
+    user_email = session.get('user_email')
+    
+    if not user_email:
+        flash('Please sign in to view your budget.')
+        return redirect(url_for('index'))
+
     today = datetime.now().strftime('%B %d, %Y')
     
-    return render_template('budget.html', first=first, today=today)
+    # Handle month selection
+    selected_month_iso = request.args.get('month')
+    selected_month = None
+    
+    if selected_month_iso:
+        try:
+            # Parse YYYY-MM
+            date_obj = datetime.strptime(selected_month_iso, '%Y-%m')
+            selected_month = date_obj.strftime('%B %Y')
+        except ValueError:
+            # Fallback if invalid format
+            selected_month_iso = datetime.now().strftime('%Y-%m')
+            selected_month = datetime.now().strftime('%B %Y')
+    else:
+        # Default to current month
+        selected_month_iso = datetime.now().strftime('%Y-%m')
+        selected_month = datetime.now().strftime('%B %Y')
+        
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Fetch budget settings
+    cur.execute("SELECT * FROM monthly_budgets WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
+    budget_row = cur.fetchone()
+    budget_data = dict(budget_row) if budget_row else {'income': 0, 'budget_limit': 0}
+    
+    # Fetch expenses for the month
+    cur.execute("SELECT * FROM expenses WHERE user_email = ? AND expense_date LIKE ? ORDER BY expense_date DESC", (user_email, f"{selected_month_iso}%"))
+    expenses_rows = cur.fetchall()
+    expenses = [dict(r) for r in expenses_rows]
+    
+    # Fetch groceries for the month
+    cur.execute("SELECT * FROM grocery_items WHERE user_email = ? AND month_iso = ?", (user_email, selected_month_iso))
+    grocery_rows = cur.fetchall()
+    groceries = [dict(r) for r in grocery_rows]
 
+    conn.close()
+
+    total_spent = sum(e['amount'] for e in expenses)
+    
+    return render_template('budget.html', first=first, today=today, 
+                           selected_month=selected_month, 
+                           selected_month_iso=selected_month_iso,
+                           budget_data=budget_data,
+                           expenses=expenses,
+                           groceries=groceries,
+                           total_spent=total_spent)
+
+@app.route('/api/budget/grocery', methods=['POST'])
+def add_grocery():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    item = data.get('item')
+    qty = data.get('qty', 1)
+    cost = data.get('cost', 0)
+    category = data.get('category', 'Groceries')
+    month_iso = data.get('month_iso')
+
+    if not item or not month_iso:
+        return jsonify({'error': 'missing fields'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO grocery_items (user_email, item_name, quantity, estimated_cost, category, month_iso, is_checked, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+        (user_email, item, qty, cost, category, month_iso, datetime.now().isoformat())
+    )
+    grocery_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return jsonify({'ok': True, 'id': grocery_id})
+
+@app.route('/api/budget/grocery/delete/<int:grocery_id>', methods=['POST'])
+def delete_grocery(grocery_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM grocery_items WHERE id = ? AND user_email = ?", (grocery_id, user_email))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'ok': True})
+
+@app.route('/api/budget/grocery/toggle/<int:grocery_id>', methods=['POST'])
+def toggle_grocery(grocery_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    is_checked = 1 if data.get('checked') else 0
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE grocery_items SET is_checked = ? WHERE id = ? AND user_email = ?", (is_checked, grocery_id, user_email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'ok': True})
 @app.route('/mood')
 def mood():
     # require login
@@ -601,6 +871,79 @@ def update_mood():
     flash(f"Mood logged: {mood_val}")
     
     return redirect(url_for('mood'))
+
+
+@app.route('/api/budget/expense', methods=['POST'])
+def add_expense():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    amount = data.get('amount')
+    category = data.get('category')
+    date_str = data.get('date')
+    notes = data.get('notes', '')
+    is_eco = 1 if data.get('is_eco') else 0
+
+    if not amount or not category or not date_str:
+        return jsonify({'error': 'missing fields'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO expenses (user_email, amount, category, expense_date, notes, is_eco, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_email, amount, category, date_str, notes, is_eco, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({'ok': True})
+
+@app.route('/api/budget/expense/delete/<int:expense_id>', methods=['POST'])
+def delete_expense(expense_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM expenses WHERE id = ? AND user_email = ?", (expense_id, user_email))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'ok': True})
+
+@app.route('/api/budget/settings', methods=['POST'])
+def update_budget_settings():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    month_iso = data.get('month_iso')
+    income = data.get('income', 0)
+    budget_limit = data.get('budget_limit', 0)
+
+    if not month_iso:
+        return jsonify({'error': 'missing month'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO monthly_budgets (user_email, month_iso, income, budget_limit)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_email, month_iso) DO UPDATE SET
+            income=excluded.income,
+            budget_limit=excluded.budget_limit
+        """,
+        (user_email, month_iso, income, budget_limit)
+    )
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'ok': True})
 
 
 @app.route('/logout')

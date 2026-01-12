@@ -17,7 +17,7 @@
     </style>
 </head>
 
-<body class="bg-[#a5dbe5] text-[#23423c] font-sans m-0 p-0">
+<body class="bg-[#a5dbe5] text-[#104b0b] font-['Poppins'] m-0 p-0">
 
     {% include 'navbar.html' %}
 
@@ -158,6 +158,24 @@
                                     </tr>
                                 </thead>
                                 <tbody id="groceryTableBody">
+                                    {% for g in groceries %}
+                                    <tr class="hover:bg-gray-50 border-b border-gray-100" data-id="{{ g.id }}"
+                                        data-amount="{{ g.estimated_cost }}" data-category="{{ g.category }}">
+                                        <td class="border border-gray-200 p-2 text-center">
+                                            <input type="checkbox" class="accent-[#0e4f23]" {% if g.is_checked
+                                                %}checked{% endif %}>
+                                        </td>
+                                        <td class="border border-gray-200 p-2">{{ g.item_name }}</td>
+                                        <td class="border border-gray-200 p-2 text-center">{{ g.quantity }}</td>
+                                        <td class="border border-gray-200 p-2 text-right">₱{{
+                                            "{:,.2f}".format(g.estimated_cost) }}</td>
+                                        <td class="border border-gray-200 p-2">{{ g.category }}</td>
+                                        <td class="border border-gray-200 p-2 text-center">
+                                            <button type="button"
+                                                class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
                                     <tr id="groceryInputRow" class="hover:bg-gray-50">
                                         <td class="border border-gray-200 p-2"></td>
                                         <td class="border border-gray-200 p-2">
@@ -219,9 +237,49 @@
             "Others"
         ];
 
+        // Inject server-side data
+        const serverExpenses = {{ expenses | tojson if expenses else '[]' }};
+        const serverGroceries = {{ groceries | tojson if groceries else '[]' }};
+        const serverSettings = {{ budget_data | tojson if budget_data else '{}' }};
+        const currentMonthIso = "{{ selected_month_iso }}";
+
         let totalSpent = 0;
         const categoryTotals = {};
         categories.forEach((c) => (categoryTotals[c] = 0));
+
+        // Initialize logic from server data
+        function initData() {
+            // Set inputs
+            if (serverSettings.income) {
+                const incInput = document.getElementById('incomeInput');
+                if (incInput) incInput.value = serverSettings.income;
+            }
+            if (serverSettings.budget_limit) {
+                const budInput = document.getElementById('budgetInput');
+                if (budInput) budInput.value = serverSettings.budget_limit;
+            }
+
+            // Process expenses
+            serverExpenses.forEach(exp => {
+                const amt = exp.amount;
+                const cat = exp.category;
+                totalSpent += amt;
+                if (categoryTotals.hasOwnProperty(cat)) {
+                    categoryTotals[cat] += amt;
+                }
+            });
+
+            // Process groceries
+            serverGroceries.forEach(g => {
+                const amt = g.estimated_cost || 0;
+                // Groceries usually have a user-selected category or default to 'Groceries'
+                const cat = g.category || 'Groceries';
+                totalSpent += amt;
+                if (categoryTotals.hasOwnProperty(cat)) {
+                    categoryTotals[cat] += amt;
+                }
+            });
+        }
 
         const categoryColors = {
             "Groceries": "#8bc34a",
@@ -414,7 +472,46 @@
             eco.checked = projectedTotal <= budgetLimit;
         }
 
-        function addToTotals(amount, category) {
+        async function saveExpense(amount, category, date, notes, isEco) {
+            try {
+                const response = await fetch('/api/budget/expense', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: amount,
+                        category: category,
+                        date: date,
+                        notes: notes,
+                        is_eco: isEco
+                    })
+                });
+                return await response.json();
+            } catch (e) {
+                console.error(e);
+                return { error: 'Network error' };
+            }
+        }
+
+        async function updateSettings() {
+            const income = Number(document.getElementById('incomeInput').value);
+            const limit = Number(document.getElementById('budgetInput').value);
+
+            try {
+                await fetch('/api/budget/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        month_iso: currentMonthIso,
+                        income: income,
+                        budget_limit: limit
+                    })
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function addToTotalsLocal(amount, category) {
             totalSpent += amount;
             if (totalSpent < 0) totalSpent = 0;
 
@@ -428,11 +525,11 @@
         }
 
         function initHeaderDate() {
-            const todayLabel = document.getElementById("todayLabel");
+            const todayLabel = document.getElementById("currentDateDisplay");
             const today = new Date();
             if (todayLabel) {
                 todayLabel.textContent =
-                    "Today: " + today.toLocaleDateString(undefined, {
+                    today.toLocaleDateString(undefined, {
                         year: "numeric",
                         month: "long",
                         day: "numeric"
@@ -468,7 +565,7 @@
 
             // update visible combined label if present
             const monthYearLabel = document.getElementById('monthYearLabel');
-            function refreshMonthYearLabel(){
+            function refreshMonthYearLabel() {
                 if (!monthYearLabel) return;
                 const mIdx = monthSelect ? (parseInt(monthSelect.value, 10) - 1) : today.getMonth();
                 const yVal = yearSelect ? yearSelect.value : currentYear;
@@ -500,25 +597,33 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            initData();
             initHeaderDate();
             updateSummary();
             updateCategoryView();
 
             const expenseForm = document.getElementById("expenseForm");
-            expenseForm.addEventListener("submit", (e) => {
+            expenseForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const amount = Number(document.getElementById("expenseAmount").value);
                 const category = document.getElementById("expenseCategory").value;
                 const date = document.getElementById("expenseDate").value;
+                const notes = document.getElementById("expenseNotes").value;
+                const isEco = document.getElementById("ecoCheckbox").checked;
 
                 if (!amount || amount <= 0 || !category || !date) {
                     alert("Please fill in Amount, Category, and Date.");
                     return;
                 }
 
-                addToTotals(amount, category);
-                clearExpenseForm();
+                const result = await saveExpense(amount, category, date, notes, isEco);
+                if (result.ok) {
+                    addToTotalsLocal(amount, category);
+                    clearExpenseForm();
+                } else {
+                    alert('Failed to save expense');
+                }
             });
 
             document
@@ -527,18 +632,25 @@
 
             document
                 .getElementById("budgetInput")
-                .addEventListener("input", () => {
+                .addEventListener("change", () => {
                     updateSummary();
                     updateEcoCheckbox();
+                    updateSettings();
                 });
+
+            const incomeInput = document.getElementById("incomeInput");
+            if (incomeInput) {
+                incomeInput.addEventListener("change", updateSettings);
+            }
 
             document
                 .getElementById("clearExpenseBtn")
                 .addEventListener("click", () => clearExpenseForm());
 
             // Grocery list
+            // Grocery list
             const groceryForm = document.getElementById("groceryForm");
-            groceryForm.addEventListener("submit", (e) => {
+            groceryForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const item = document.getElementById("groceryItem").value.trim();
@@ -551,82 +663,77 @@
                     return;
                 }
 
-                const tbody = document.getElementById("groceryTableBody");
-                const inputRow = document.getElementById("groceryInputRow");
+                // Get month from URL or default
+                const urlParams = new URLSearchParams(window.location.search);
+                const monthIso = urlParams.get('month') || new Date().toISOString().slice(0, 7);
 
-                const row = document.createElement("tr");
-                row.className = "hover:bg-gray-50 border-b border-gray-100";
+                try {
+                    const response = await fetch('/api/budget/grocery', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ item, qty, cost, category: budgetCat, month_iso: monthIso })
+                    });
+                    const res = await response.json();
 
-                const checkCell = document.createElement("td");
-                checkCell.className = "border border-gray-200 p-2 text-center";
-                const check = document.createElement("input");
-                check.type = "checkbox";
-                check.checked = true;
-                check.className = "accent-[#0e4f23]";
-                checkCell.appendChild(check);
-
-                const itemCell = document.createElement("td");
-                itemCell.className = "border border-gray-200 p-2";
-                itemCell.textContent = item;
-
-                const qtyCell = document.createElement("td");
-                qtyCell.className = "border border-gray-200 p-2 text-center";
-                qtyCell.textContent = qty;
-
-                const costCell = document.createElement("td");
-                costCell.className = "border border-gray-200 p-2 text-right";
-                costCell.textContent = formatCurrency(cost);
-
-                const categoryForTotals = budgetCat || "Groceries";
-                const budgetCatCell = document.createElement("td");
-                budgetCatCell.className = "border border-gray-200 p-2";
-                budgetCatCell.textContent = categoryForTotals;
-
-                const actionCell = document.createElement("td");
-                actionCell.className = "border border-gray-200 p-2 text-center";
-                const removeBtn = document.createElement("button");
-                removeBtn.type = "button";
-                removeBtn.textContent = "Remove";
-                removeBtn.className = "btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors";
-                actionCell.appendChild(removeBtn);
-
-                row.appendChild(checkCell);
-                row.appendChild(itemCell);
-                row.appendChild(qtyCell);
-                row.appendChild(costCell);
-                row.appendChild(budgetCatCell);
-                row.appendChild(actionCell);
-
-                // store data so we can subtract later
-                row.dataset.amount = cost;
-                row.dataset.category = categoryForTotals;
-
-                // insert ABOVE input row so input row stays at the bottom
-                tbody.insertBefore(row, inputRow);
-
-                addToTotals(cost, categoryForTotals);
-
-                groceryForm.reset();
-                document.getElementById("groceryQty").value = 1;
+                    if (res.ok) {
+                        // Reload or append? reloading is safest for ID sync, but let's append for UX
+                        // Actually we need the ID for delete/toggle. API returns it.
+                        // For simplicity, let's reload to ensure sync, or append carefully.
+                        window.location.reload();
+                        /* 
+                        // If we wanted to append manually:
+                        const id = res.id;
+                        addGroceryRow(id, item, qty, cost, budgetCat || "Groceries", true);
+                        addToTotalsLocal(cost, budgetCat || "Groceries");
+                        groceryForm.reset();
+                         */
+                    } else {
+                        alert('Failed to save grocery item.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Error saving grocery item.');
+                }
             });
 
-            // Remove button in grocery table (event delegation)
+            // Remove and Checkbox in grocery table (event delegation)
             document
                 .getElementById("groceryTableBody")
-                .addEventListener("click", (e) => {
-                    if (!e.target.classList.contains("btn-remove")) return;
-
+                .addEventListener("click", async (e) => {
                     const row = e.target.closest("tr");
-                    if (!row || !row.dataset.amount) return;
-
+                    if (!row) return;
+                    const groceryId = row.dataset.id;
                     const amount = parseFloat(row.dataset.amount) || 0;
                     const category = row.dataset.category;
 
-                    if (amount && category) {
-                        addToTotals(-amount, category);
-                    }
+                    if (e.target.classList.contains("btn-remove")) {
+                        // Delete logic
+                        if (!groceryId) {
+                            // client-side only row? remove it
+                            row.remove();
+                            addToTotalsLocal(-amount, category);
+                            return;
+                        }
 
-                    row.remove();
+                        if (confirm("Delete this item?")) {
+                            const res = await fetch(`/api/budget/grocery/delete/${groceryId}`, { method: 'POST' });
+                            if (res.ok) {
+                                addToTotalsLocal(-amount, category);
+                                row.remove();
+                            } else {
+                                alert("Failed to delete.");
+                            }
+                        }
+                    } else if (e.target.type === "checkbox") {
+                        // Toggle logic
+                        if (groceryId) {
+                            fetch(`/api/budget/grocery/toggle/${groceryId}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ checked: e.target.checked })
+                            });
+                        }
+                    }
                 });
 
             // Clear category buttons in Monthly Budget Summary
@@ -640,7 +747,7 @@
 
                     const amount = categoryTotals[cat] || 0;
                     if (amount > 0) {
-                        addToTotals(-amount, cat);
+                        addToTotalsLocal(-amount, cat);
                     }
                 });
         });
