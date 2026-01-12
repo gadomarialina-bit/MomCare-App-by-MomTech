@@ -743,29 +743,9 @@ def budgetexpenses():
                            groceries=groceries,
                            total_spent=total_spent)
 
-@app.route('/api/budget/grocery', methods=['POST'])
-def add_grocery():
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only mode: accept request but do not persist to the DB.
-    return jsonify({'ok': True, 'note': 'ui-only'})
 
-@app.route('/api/budget/grocery/delete/<int:grocery_id>', methods=['POST'])
-def delete_grocery(grocery_id):
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only: pretend deletion succeeded without altering DB
-    return jsonify({'ok': True, 'note': 'ui-only'})
 
-@app.route('/api/budget/grocery/toggle/<int:grocery_id>', methods=['POST'])
-def toggle_grocery(grocery_id):
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only: acknowledge toggle but do not update DB
-    return jsonify({'ok': True, 'note': 'ui-only'})
+
 @app.route('/mood')
 def mood():
     # require login
@@ -803,29 +783,6 @@ def update_mood():
     return redirect(url_for('mood'))
 
 
-@app.route('/api/budget/expense', methods=['POST'])
-def add_expense():
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only: accept expense submissions but do not persist
-    return jsonify({'ok': True, 'note': 'ui-only'})
-
-@app.route('/api/budget/expense/delete/<int:expense_id>', methods=['POST'])
-def delete_expense(expense_id):
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only: acknowledge deletion without DB change
-    return jsonify({'ok': True, 'note': 'ui-only'})
-
-@app.route('/api/budget/settings', methods=['POST'])
-def update_budget_settings():
-    user_email = session.get('user_email')
-    if not user_email:
-        return jsonify({'error': 'unauthenticated'}), 401
-    # UI-only: accept settings but do not save
-    return jsonify({'ok': True, 'note': 'ui-only'})
 
 
 @app.route('/logout')
