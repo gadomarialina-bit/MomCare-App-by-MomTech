@@ -158,24 +158,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="groceryTableBody">
-                                    {% for g in groceries %}
-                                    <tr class="hover:bg-gray-50 border-b border-gray-100" data-id="{{ g.id }}"
-                                        data-amount="{{ g.estimated_cost }}" data-category="{{ g.category }}">
-                                        <td class="border border-gray-200 p-2 text-center">
-                                            <input type="checkbox" class="accent-[#0e4f23]" {% if g.is_checked
-                                                %}checked{% endif %}>
-                                        </td>
-                                        <td class="border border-gray-200 p-2">{{ g.item_name }}</td>
-                                        <td class="border border-gray-200 p-2 text-center">{{ g.quantity }}</td>
-                                        <td class="border border-gray-200 p-2 text-right">₱{{
-                                            "{:,.2f}".format(g.estimated_cost) }}</td>
-                                        <td class="border border-gray-200 p-2">{{ g.category }}</td>
-                                        <td class="border border-gray-200 p-2 text-center">
-                                            <button type="button"
-                                                class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                     <tr id="groceryInputRow" class="hover:bg-gray-50">
                                         <td class="border border-gray-200 p-2"></td>
                                         <td class="border border-gray-200 p-2">
@@ -237,11 +219,11 @@
             "Others"
         ];
 
-        // Inject server-side data
-        const serverExpenses = {{ expenses | tojson if expenses else '[]' }};
-        const serverGroceries = {{ groceries | tojson if groceries else '[]' }};
-        const serverSettings = {{ budget_data | tojson if budget_data else '{}' }};
-        const currentMonthIso = "{{ selected_month_iso }}";
+        // UI-only mode: no server/database bindings
+        const serverExpenses = [];
+        const serverGroceries = [];
+        const serverSettings = {};
+        const currentMonthIso = new Date().toISOString().slice(0,7);
 
         let totalSpent = 0;
         const categoryTotals = {};
@@ -473,42 +455,44 @@
         }
 
         async function saveExpense(amount, category, date, notes, isEco) {
+            // UI-only: pretend save succeeded
+            return { ok: true };
+        }
+
+        function updateSettings() {
+            // UI-only: no server persistence. Optionally store locally.
             try {
-                const response = await fetch('/api/budget/expense', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        amount: amount,
-                        category: category,
-                        date: date,
-                        notes: notes,
-                        is_eco: isEco
-                    })
-                });
-                return await response.json();
+                const income = Number(document.getElementById('incomeInput').value);
+                const limit = Number(document.getElementById('budgetInput').value);
+                localStorage.setItem('budget_income_' + currentMonthIso, String(income));
+                localStorage.setItem('budget_limit_' + currentMonthIso, String(limit));
             } catch (e) {
                 console.error(e);
-                return { error: 'Network error' };
             }
         }
 
-        async function updateSettings() {
-            const income = Number(document.getElementById('incomeInput').value);
-            const limit = Number(document.getElementById('budgetInput').value);
+        function addGroceryRow(id, item, qty, cost, category, checked) {
+            const tbody = document.getElementById('groceryTableBody');
+            const inputRow = document.getElementById('groceryInputRow');
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+            tr.dataset.id = id;
+            tr.dataset.amount = String(cost);
+            tr.dataset.category = category || 'Groceries';
 
-            try {
-                await fetch('/api/budget/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        month_iso: currentMonthIso,
-                        income: income,
-                        budget_limit: limit
-                    })
-                });
-            } catch (e) {
-                console.error(e);
-            }
+            tr.innerHTML = `\
+                <td class="border border-gray-200 p-2 text-center">\
+                    <input type="checkbox" class="accent-[#0e4f23]" ${checked ? 'checked' : ''}>\
+                </td>\
+                <td class="border border-gray-200 p-2">${item}</td>\
+                <td class="border border-gray-200 p-2 text-center">${qty}</td>\
+                <td class="border border-gray-200 p-2 text-right">₱ ${Number(cost).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>\
+                <td class="border border-gray-200 p-2">${category || 'Groceries'}</td>\
+                <td class="border border-gray-200 p-2 text-center">\
+                    <button type="button" class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>\
+                </td>`;
+
+            tbody.insertBefore(tr, inputRow);
         }
 
         function addToTotalsLocal(amount, category) {
@@ -667,33 +651,11 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const monthIso = urlParams.get('month') || new Date().toISOString().slice(0, 7);
 
-                try {
-                    const response = await fetch('/api/budget/grocery', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ item, qty, cost, category: budgetCat, month_iso: monthIso })
-                    });
-                    const res = await response.json();
-
-                    if (res.ok) {
-                        // Reload or append? reloading is safest for ID sync, but let's append for UX
-                        // Actually we need the ID for delete/toggle. API returns it.
-                        // For simplicity, let's reload to ensure sync, or append carefully.
-                        window.location.reload();
-                        /* 
-                        // If we wanted to append manually:
-                        const id = res.id;
-                        addGroceryRow(id, item, qty, cost, budgetCat || "Groceries", true);
-                        addToTotalsLocal(cost, budgetCat || "Groceries");
-                        groceryForm.reset();
-                         */
-                    } else {
-                        alert('Failed to save grocery item.');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert('Error saving grocery item.');
-                }
+                // UI-only: add row locally without server
+                const id = 'local-' + Date.now();
+                addGroceryRow(id, item, qty, cost, budgetCat || 'Groceries', true);
+                addToTotalsLocal(cost, budgetCat || 'Groceries');
+                groceryForm.reset();
             });
 
             // Remove and Checkbox in grocery table (event delegation)
@@ -707,32 +669,14 @@
                     const category = row.dataset.category;
 
                     if (e.target.classList.contains("btn-remove")) {
-                        // Delete logic
-                        if (!groceryId) {
-                            // client-side only row? remove it
+                        // Client-side delete only
+                        if (confirm("Delete this item?")) {
                             row.remove();
                             addToTotalsLocal(-amount, category);
-                            return;
-                        }
-
-                        if (confirm("Delete this item?")) {
-                            const res = await fetch(`/api/budget/grocery/delete/${groceryId}`, { method: 'POST' });
-                            if (res.ok) {
-                                addToTotalsLocal(-amount, category);
-                                row.remove();
-                            } else {
-                                alert("Failed to delete.");
-                            }
                         }
                     } else if (e.target.type === "checkbox") {
-                        // Toggle logic
-                        if (groceryId) {
-                            fetch(`/api/budget/grocery/toggle/${groceryId}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ checked: e.target.checked })
-                            });
-                        }
+                        // Client-side toggle only: no server update
+                        // Optionally update UI or local storage here
                     }
                 });
 
