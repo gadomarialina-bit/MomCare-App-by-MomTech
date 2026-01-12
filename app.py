@@ -54,6 +54,7 @@ def init_db():
            email TEXT NOT NULL UNIQUE,
            birthdate TEXT,
            password_hash TEXT NOT NULL,
+           security_question TEXT,
            security_answer TEXT
        )
        """
@@ -80,12 +81,15 @@ def init_db():
    cur.execute(
        """
        CREATE TABLE IF NOT EXISTS monthly_budgets (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           user_email TEXT NOT NULL,
-           month_iso TEXT NOT NULL,
-           income REAL DEFAULT 0,
-           budget_limit REAL DEFAULT 0,
-           UNIQUE(user_email, month_iso)
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            month_iso TEXT NOT NULL,
+            income REAL DEFAULT 0,
+            budget_limit REAL DEFAULT 0,
+            month INTEGER,
+            year INTEGER,
+            created_at TEXT,
+            UNIQUE(user_email, month_iso)
        )
        """
    )
@@ -94,15 +98,17 @@ def init_db():
    # Create expenses table
    cur.execute(
        """
-       CREATE TABLE IF NOT EXISTS expenses (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           user_email TEXT NOT NULL,
-           amount REAL NOT NULL,
-           category TEXT NOT NULL,
-           expense_date TEXT NOT NULL,
-           notes TEXT,
-           is_eco INTEGER DEFAULT 0,
-           created_at TEXT
+       CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            title TEXT NOT NULL,
+            start_time REAL,
+            duration REAL,
+            color TEXT,
+            is_priority INTEGER DEFAULT 0,
+            task_date TEXT,
+            completed INTEGER DEFAULT 0,
+            created_at TEXT
        )
        """
    )
@@ -111,16 +117,18 @@ def init_db():
    # Create grocery_items table
    cur.execute(
        """
-       CREATE TABLE IF NOT EXISTS grocery_items (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           user_email TEXT NOT NULL,
-           item_name TEXT NOT NULL,
-           quantity INTEGER DEFAULT 1,
-           estimated_cost REAL,
-           category TEXT,
-           is_checked INTEGER DEFAULT 0,
-           month_iso TEXT,
-           created_at TEXT
+        CREATE TABLE IF NOT EXISTS grocery_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            item_name TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            estimated_cost REAL,
+            category TEXT,
+            is_checked INTEGER DEFAULT 0,
+            month_iso TEXT,
+            month INTEGER,
+            year INTEGER,
+            created_at TEXT
        )
        """
    )
@@ -152,6 +160,7 @@ def init_db():
                category TEXT,
                is_checked INTEGER DEFAULT 0,
                month_iso TEXT,
+               year INTEGER,
                created_at TEXT
            )
            """
