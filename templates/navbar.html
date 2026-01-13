@@ -1,55 +1,58 @@
 <!-- Shared navbar + off-canvas menu -->
 <header class="bg-green-900 text-white">
-  <div class="max-w-7xl m-auto px-6 py-6">
-    <div class="flex items-center justify-between relative">
-
-      {% if request.endpoint == 'profile' %}
-      <div class="flex items-center gap-6">
-        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare" class="h-20 w-auto" />
-        <div>
-          <h1 class="text-l lg:text-xl font-bold">My Account</h1>
-          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-        </div>
-      </div>
-
-      {% elif request.endpoint == 'mood' %}
-      <div class="flex items-center gap-6">
-        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare" class="h-20 w-auto" />
-        <div>
-          <h1 class="text-l lg:text-xl font-bold">Mood &amp; Wellness</h1>
-          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-        </div>
-      </div>
-
-      {% elif request.endpoint == 'budgetexpenses' %}
-      <div class="flex items-center gap-6">
-        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare" class="h-20 w-auto" />
-        <div>
-          <h1 class="text-l lg:text-xl font-bold">Budget &amp; Expenses</h1>
-          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-        </div>
-      </div>
-
-      {% elif request.endpoint == 'tasks' %}
-      <div class="flex items-center gap-6">
-        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare" class="h-20 w-auto" />
-        <div>
-          <h1 class="text-l lg:text-xl font-bold">Slay your day Mommy!</h1>
-          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-        </div>
-      </div>
-
-      {% else %}
-      <div class="flex items-center gap-6">
-        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare" class="h-16 w-auto" />
-        <div>
-          <h1 class="text-l lg:text-xl font-bold">
-            How are you today, {{ first or session.get('user_first') or 'User' }}?
-          </h1>
-          <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-        </div>
-      </div>
-      {% endif %}
+    <div class="max-w-7xl m-auto px-6 py-6">
+        <div class="flex items-center justify-between relative">
+            {% if request.endpoint == 'profile' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">My Account</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'mood' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Mood & Wellness</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'budgetexpenses' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Budget & Expenses</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
+                </div>
+            </div>
+            {% elif request.endpoint == 'tasks' %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-20 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">Slay your day Mommy!</h1>
+                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-6">
+                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+                    class="h-16 w-auto" />
+                <div>
+                    <h1 class="text-l lg:text-xl font-bold">How are you today, {{ first or session.get('user_first') or
+                        'User' }}?</h1>
+                    <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+                            }}</span></p>
+                </div>
+            </div>
+            {% endif %}
 
       <!-- Hidden dropdown month/year picker (only budgetexpenses or dashboard) -->
       {% if request.endpoint == 'budgetexpenses' or request.endpoint == 'dashboard' %}

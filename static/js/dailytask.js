@@ -321,6 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const createReminderBtn = document.getElementById('createReminderBtn');
     const cancelCreateReminderBtn = document.getElementById('cancelCreateReminderBtn');
     const reminderListEl = document.getElementById('reminderList');
+    // Delete reminder modal elements
+    const deleteReminderModal = document.getElementById('deleteReminderModal');
+    const cancelDeleteReminderBtn = document.getElementById('cancelDeleteReminderBtn');
+    const confirmDeleteReminderBtn = document.getElementById('confirmDeleteReminderBtn');
+    let pendingReminderDeleteId = null;
 
     function toggleAddForm(show) {
         if (!addReminderForm) return;
@@ -360,7 +365,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // attach delete/edit handlers
                 document.querySelectorAll('.delete-reminder').forEach(btn => btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
-                    if (confirm('Delete this reminder?')) deleteReminder(id);
+                    // open modal to confirm deletion
+                    pendingReminderDeleteId = id;
+                    if (deleteReminderModal) deleteReminderModal.classList.remove('hidden');
                 }));
                 document.querySelectorAll('.edit-reminder').forEach(btn => btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
@@ -398,7 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deleteReminder(id) {
-        fetch(`/api/reminders/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadReminderItems()).catch(err => console.error(err));
+        fetch(`/api/reminders/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(() => {
+                showToast('Reminder deleted', 'success');
+                loadReminderItems();
+            }).catch(err => { console.error(err); showToast('Error deleting reminder', 'error'); });
     }
 
     function startEditReminder(id) {
@@ -436,6 +448,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // load scheduled reminders initially
     loadReminderItems();
+
+    // Reminder delete modal handlers
+    function closeDeleteReminderModal() {
+        if (!deleteReminderModal) return;
+        deleteReminderModal.classList.add('hidden');
+        pendingReminderDeleteId = null;
+    }
+
+    if (cancelDeleteReminderBtn) cancelDeleteReminderBtn.addEventListener('click', (e) => { e.preventDefault(); closeDeleteReminderModal(); });
+    if (confirmDeleteReminderBtn) confirmDeleteReminderBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!pendingReminderDeleteId) { closeDeleteReminderModal(); return; }
+        deleteReminder(pendingReminderDeleteId);
+        closeDeleteReminderModal();
+    });
 
     // --- MODAL & FORM ---
     function openModal(isEdit = false) {
