@@ -281,8 +281,7 @@
 
 <!-- MAIN CONTENT BOX -->
 <div class="profile-box">
-</form>
-    <form method="POST" action="{{ url_for('edit_profile') }}">
+    <form method="POST" action="{{ url_for('edit_profile', user_id=user.id) }}" enctype="multipart/form-data">
     
     <label for="first_name">First Name</label>
     <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
@@ -300,6 +299,7 @@
     <select id="gender" name="gender">
         <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
         <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+        <option value="Not Specified" {% if user.gender == 'Not Specified' or not user.gender %}selected{% endif %}>Not Specified</option>
     </select>
     
     <label for="height">Height (cm)</label>
@@ -308,14 +308,21 @@
     <label for="weight">Weight (kg)</label>
     <input type="number" id="weight" name="weight" value="{{ user.weight or '' }}">
 
+    <!-- Profile Picture Upload -->
+    <div class="profile-photo">
+        <img id="profile-preview" src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.png') }}" alt="Profile Picture">
+        <label for="profile_picture" class="upload-label">Click to upload new picture</label>
+        <input type="file" id="profile_picture" name="profile_picture" accept="image/*" style="display: none;">
+    </div>
+
     <div class="btn-row">
-        <form method="POST" action="{{ url_for('edit_profile') }}">
-    <button class="save-btn" type="submit">Save</button>
-        <a href="{{ url_for('profile', user_id=user.id) }}"></a>
+        <button class="save-btn" type="submit">Save</button>
+        <a href="{{ url_for('profile', user_id=user.id) }}">
             <button type="button" class="cancel-btn">Cancel</button>
         </a>
+    </div>
     
-</form>
+    </form>
 	
 
     
@@ -336,6 +343,18 @@ window.onclick = function(event) {
         menu.style.display = "none";
     }
 }
+
+// Profile picture preview
+document.getElementById('profile_picture').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
 </script>
 
 </body>

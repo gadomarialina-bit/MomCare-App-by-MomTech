@@ -35,10 +35,32 @@ def init_db():
             birthdate TEXT,
             password_hash TEXT NOT NULL,
             security_question TEXT,
-            security_answer TEXT
+            security_answer TEXT,
+            gender TEXT DEFAULT 'Not Specified',
+            height TEXT DEFAULT '0',
+            weight TEXT DEFAULT '0'
         )
         """
     )
+    
+    # Add missing columns if they don't exist (for existing databases)
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN gender TEXT DEFAULT 'Not Specified'")
+    except:
+        pass  # Column might already exist
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN height TEXT DEFAULT '0'")
+    except:
+        pass  # Column might already exist
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN weight TEXT DEFAULT '0'")
+    except:
+        pass  # Column might already exist
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN profile_picture TEXT DEFAULT ''")
+    except:
+        pass  # Column might already exist
+    
     conn.commit()
 
 
@@ -258,6 +280,7 @@ def verify_security_answer():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True)
 
 
@@ -612,7 +635,7 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/my-account')
+@app.route('/my_account', endpoint='my_account')
 def my_account():
     user_email = session.get('user_email')
     if not user_email:
@@ -633,7 +656,7 @@ def my_account():
         else:
             flash('Account not found.')
             return redirect(url_for('logout'))
-            
+           
     return redirect(url_for('profile', user_id=user_id))
 
 
@@ -666,17 +689,10 @@ def profile(user_id):
     user = dict(user_row)
     user['password_display'] = '********' 
     
-    # Ensure fields expected by template exist, map from DB columns
-    # DB has: first, last, email, birthdate...
-    # Template expects: first_name, last_name, gender, height_display, weight_display
-    # We might need to add these columns to DB or handle missing data gracefully.
-    # For this iteration, I will map existing DB fields and use placeholders for missing ones.
-    
+    # Map DB fields to template fields
     user['first_name'] = user['first']
     user['last_name'] = user['last']
     user['birthdate_display'] = user['birthdate']
-    
-    # Placeholders for fields not searching in init_db yet
     user['gender'] = user.get('gender', 'Not Specified')
     user['height_display'] = user.get('height', '0')
     user['weight_display'] = user.get('weight', '0')
@@ -687,6 +703,103 @@ def profile(user_id):
     
     return render_template('profile.html', user=user, first=first, today=today)
 
-@app.route('/profile/edit/<int:user_id>')
+@app.route('/profile/edit/<int:user_id>', methods=['GET', 'POST'])
 def edit_profile(user_id):
-     return "Edit Profile Page (Coming Soon)"
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Please sign in to edit your profile.')
+        return redirect(url_for('index'))
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user_row = cur.fetchone()
+    
+    if not user_row:
+        conn.close()
+        flash('User not found.')
+        return redirect(url_for('dashboard'))
+    
+    if user_row['email'] != user_email:
+        conn.close()
+        flash('Unauthorized access.')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        birthdate = request.form.get('birthdate', '').strip()
+        gender = request.form.get('gender', '').strip()
+        height = request.form.get('height', '').strip()
+        weight = request.form.get('weight', '').strip()
+
+        # Handle profile picture upload
+        profile_picture_path = user_row['profile_picture'] or ''  # Keep existing if no new upload
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and file.filename:
+                # Create profiles directory if it doesn't exist
+                profiles_dir = Path(app.root_path) / 'static' / 'images' / 'profiles'
+                profiles_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Generate unique filename
+                import uuid
+                ext = Path(file.filename).suffix
+                filename = f"{user_id}_{uuid.uuid4().hex}{ext}"
+                file_path = profiles_dir / filename
+                file.save(file_path)
+                profile_picture_path = f"images/profiles/{filename}"
+
+        # Basic validation
+        if not first_name or not last_name or not email:
+            flash('Please fill in all required fields.')
+            conn.close()
+            return redirect(url_for('edit_profile', user_id=user_id))
+
+        # Check if email is already taken by another user
+        cur.execute("SELECT id FROM users WHERE email = ? AND id != ?", (email, user_id))
+        if cur.fetchone():
+            conn.close()
+            flash('Email is already in use by another account.')
+            return redirect(url_for('edit_profile', user_id=user_id))
+
+        try:
+            cur.execute(
+                """
+                UPDATE users 
+                SET first = ?, last = ?, email = ?, birthdate = ?, gender = ?, height = ?, weight = ?, profile_picture = ?
+                WHERE id = ?
+                """,
+                (first_name, last_name, email, birthdate, gender, height, weight, profile_picture_path, user_id)
+            )
+            conn.commit()
+            
+            # Update session if email changed
+            if email != user_email:
+                session['user_email'] = email
+            
+            flash('Profile updated successfully!')
+            conn.close()
+            return redirect(url_for('profile', user_id=user_id))
+        except Exception as e:
+            print(f"Error updating profile: {e}")
+            flash('Unable to update profile. Please try again.')
+            conn.close()
+            return redirect(url_for('edit_profile', user_id=user_id))
+
+    conn.close()
+    
+    # Prepare user data for template
+    user = dict(user_row)
+    user['first_name'] = user['first']
+    user['last_name'] = user['last']
+    user['birthdate'] = user.get('birthdate', '')
+    user['gender'] = user.get('gender', '')
+    user['height'] = user.get('height', '')
+    user['weight'] = user.get('weight', '')
+    
+    first = session.get('user_first')
+    today = datetime.now().strftime('%B %d, %Y')
+    
+    return render_template('edit.html', user=user, first=first, today=today)

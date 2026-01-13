@@ -6,7 +6,7 @@
                 <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
                     class="h-16 w-auto" />
                 <div>
-                    <h1 class="text-l lg:text-xl font-light">How are you today, {{ first or session.get('user_first') or
+                    <h1 class="text-l lg:text-xl font-light">Hey, {{ first or session.get('user_first') or
                         'User' }}?</h1>
                     <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
                             }}</span></p>
