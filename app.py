@@ -13,6 +13,13 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-production')
 
+# Ensure DB schema exists on startup
+try:
+    init_db()
+except Exception as _:
+    # don't prevent app from starting if init has issues; log to console
+    print('Warning: init_db() failed to run during startup')
+
 
 
 
@@ -129,6 +136,35 @@ def init_db():
             month INTEGER,
             year INTEGER,
             created_at TEXT
+       )
+       """
+   )
+
+   # Create reminders table (one per user)
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS reminders (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           user_email TEXT NOT NULL UNIQUE,
+           message TEXT,
+           created_at TEXT,
+           updated_at TEXT
+       )
+       """
+   )
+   # Create reminder_items table for multiple scheduled reminders
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS reminder_items (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           user_email TEXT NOT NULL,
+           title TEXT,
+           message TEXT,
+           remind_at TEXT,
+           is_recurring INTEGER DEFAULT 0,
+           recurrence_rule TEXT,
+           created_at TEXT,
+           updated_at TEXT
        )
        """
    )
@@ -377,6 +413,120 @@ def forgot_password_qa():
        return render_template('forgot_qa.html', email=email, security_question=security_question)
   
    return render_template('forgot_qa_firstname.html')
+
+
+@app.route('/api/reminder', methods=['GET', 'PUT'])
+def api_reminder():
+   # Require logged-in user
+   user_email = session.get('user_email')
+   if not user_email:
+       return jsonify({'error': 'Not authenticated'}), 401
+
+   conn = get_db()
+   cur = conn.cursor()
+   if request.method == 'GET':
+       cur.execute('SELECT message, updated_at FROM reminders WHERE user_email = ?', (user_email,))
+       row = cur.fetchone()
+       conn.close()
+       if not row:
+           return jsonify({'message': ''})
+       return jsonify({'message': row['message'] or '', 'updated_at': row['updated_at']})
+
+   # PUT -> update or create
+   data = request.get_json() or {}
+   message = data.get('message', '')
+   now = datetime.utcnow().isoformat()
+
+   try:
+       # Try updating existing
+       cur.execute('UPDATE reminders SET message = ?, updated_at = ? WHERE user_email = ?', (message, now, user_email))
+       if cur.rowcount == 0:
+           cur.execute('INSERT INTO reminders (user_email, message, created_at, updated_at) VALUES (?, ?, ?, ?)', (user_email, message, now, now))
+       conn.commit()
+   except Exception as e:
+       conn.rollback()
+       conn.close()
+       return jsonify({'error': 'Unable to save reminder'}), 500
+
+   conn.close()
+   return jsonify({'message': message, 'updated_at': now})
+
+
+@app.route('/api/reminders', methods=['GET', 'POST'])
+def api_reminders():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    if request.method == 'GET':
+        cur.execute('SELECT id, title, message, remind_at, is_recurring, recurrence_rule, created_at, updated_at FROM reminder_items WHERE user_email = ? ORDER BY remind_at IS NULL, remind_at', (user_email,))
+        rows = cur.fetchall()
+        reminders = [dict(r) for r in rows]
+        conn.close()
+        return jsonify({'reminders': reminders})
+
+    # POST -> create new reminder item
+    data = request.get_json() or {}
+    title = data.get('title', '')
+    message = data.get('message', '')
+    remind_at = data.get('remind_at')
+    is_recurring = 1 if data.get('is_recurring') else 0
+    recurrence_rule = data.get('recurrence_rule')
+    now = datetime.utcnow().isoformat()
+    try:
+        cur.execute('INSERT INTO reminder_items (user_email, title, message, remind_at, is_recurring, recurrence_rule, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    (user_email, title, message, remind_at, is_recurring, recurrence_rule, now, now))
+        conn.commit()
+        new_id = cur.lastrowid
+        cur.execute('SELECT id, title, message, remind_at, is_recurring, recurrence_rule, created_at, updated_at FROM reminder_items WHERE id = ?', (new_id,))
+        row = cur.fetchone()
+        conn.close()
+        return jsonify(dict(row)), 201
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'Unable to create reminder item'}), 500
+
+
+@app.route('/api/reminders/<int:item_id>', methods=['PUT', 'DELETE'])
+def api_reminder_item(item_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    if request.method == 'DELETE':
+        cur.execute('DELETE FROM reminder_items WHERE id = ? AND user_email = ?', (item_id, user_email))
+        conn.commit()
+        conn.close()
+        return jsonify({'deleted': True})
+
+    # PUT -> update
+    data = request.get_json() or {}
+    title = data.get('title', '')
+    message = data.get('message', '')
+    remind_at = data.get('remind_at')
+    is_recurring = 1 if data.get('is_recurring') else 0
+    recurrence_rule = data.get('recurrence_rule')
+    now = datetime.utcnow().isoformat()
+    try:
+        cur.execute('UPDATE reminder_items SET title = ?, message = ?, remind_at = ?, is_recurring = ?, recurrence_rule = ?, updated_at = ? WHERE id = ? AND user_email = ?',
+                    (title, message, remind_at, is_recurring, recurrence_rule, now, item_id, user_email))
+        if cur.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Not found'}), 404
+        conn.commit()
+        cur.execute('SELECT id, title, message, remind_at, is_recurring, recurrence_rule, created_at, updated_at FROM reminder_items WHERE id = ?', (item_id,))
+        row = cur.fetchone()
+        conn.close()
+        return jsonify(dict(row))
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'Unable to update reminder item'}), 500
 
 
 
@@ -650,16 +800,18 @@ def api_update_task(task_id):
    prop_date = task_date if task_date is not None else existing['task_date']
 
 
-   try:
-       if prop_start is not None and prop_duration is not None:
-           ns = float(prop_start)
-           ne = ns + float(prop_duration)
-           cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND id != ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, prop_date, task_id, ne, ns))
-           if cur.fetchone():
-               conn.close()
-               return jsonify({'error': 'overlap'}), 400
-   except Exception:
-       pass
+   # Only validate overlap when scheduling fields are being changed by the client
+   if any(k in data for k in ('start_time', 'duration', 'task_date')):
+       try:
+           if prop_start is not None and prop_duration is not None:
+               ns = float(prop_start)
+               ne = ns + float(prop_duration)
+               cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND id != ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, prop_date, task_id, ne, ns))
+               if cur.fetchone():
+                   conn.close()
+                   return jsonify({'error': 'overlap'}), 400
+       except Exception:
+           pass
 
 
    cur.execute('UPDATE tasks SET title = COALESCE(?, title), start_time = COALESCE(?, start_time), duration = COALESCE(?, duration), color = COALESCE(?, color), is_priority = ?, task_date = COALESCE(?, task_date), completed = ? WHERE id = ? AND user_email = ?',

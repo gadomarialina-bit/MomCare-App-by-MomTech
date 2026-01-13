@@ -183,6 +183,20 @@ body {
     /* Space for time labels */
 }
 
+/* Overlay message shown when no date is selected (doesn't change layout) */
+.timeline-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255,255,255,0.9);
+    padding: 12px 18px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    z-index: 10;
+    pointer-events: none; /* allow clicks through to grid if needed */
+}
+
 .timeline-hour {
     height: 60px;
     /* 1 hour = 60px height */
