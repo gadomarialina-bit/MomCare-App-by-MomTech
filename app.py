@@ -635,7 +635,7 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/my_account', endpoint='my_account')
+@app.route('/my_account', endpoint='my_account_page')
 def my_account():
     user_email = session.get('user_email')
     if not user_email:
