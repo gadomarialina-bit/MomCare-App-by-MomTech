@@ -36,7 +36,7 @@
                 <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
                     class="h-20 w-auto" />
                 <div>
-                    <h1 class="text-l lg:text-xl font-bold">Slay your day {{ first or session.get('user_first') or
+                    <h1 class="text-l lg:text-xl font-bold">Slay your day, {{ first or session.get('user_first') or
                         'User' }}!</h1>
                     <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
                             }}</span></p>
