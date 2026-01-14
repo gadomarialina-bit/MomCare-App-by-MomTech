@@ -18,59 +18,61 @@
             margin: 40px auto;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .profile-header {
-            background: #5a8d26;
-            /* Lime Green */
-            text-align: center;
-            padding: 18px;
+            background: linear-gradient(135deg, #0b3f0a, #5a8d26);
             color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
             font-weight: bold;
-            font-size: 22px;
-            border-radius: 20px 20px 0 0;
         }
 
         .profile-content {
-            padding: 40px 60px;
-            color: #104b0b;
-            /* Dark Green Text */
-            font-size: 20px;
+            padding: 30px;
+            text-align: center;
         }
 
         .detail-row {
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
             gap: 10px;
-            flex-wrap: wrap;
         }
 
-        .label {
-            font-weight: 600;
-            min-width: 150px;
+        .detail-row label {
+            font-weight: 500;
+            color: #374151;
+            min-width: 120px;
         }
 
-        .value {
+        .detail-row .value {
             font-weight: 400;
+            color: #111827;
         }
 
-        .avatar {
-            width: 70px;
-            height: 70px;
-            background-color: #f3f4f6;
-            border-radius: 50%;
+        .profile-photo {
             display: flex;
             justify-content: center;
-            align-items: center;
-            color: #5a8d26;
-            font-size: 35px;
+            margin-bottom: 20px;
+        }
+
+        .profile-photo img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #e5e7eb;
         }
 
         .name {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: bold;
+            text-align: center;
+            color: #111827;
+            margin-bottom: 20px;
         }
 
         .edit-btn {
@@ -79,7 +81,6 @@
             text-align: center;
             margin: 30px auto 10px;
             background: #5a8d26;
-            /* Lime Green */
             padding: 12px 0;
             border-radius: 20px;
             color: white;
@@ -90,54 +91,60 @@
         }
 
         .edit-btn:hover {
-            background: #4b751f;
+            background: #4a7c1f;
         }
     </style>
 </head>
 
-<body class="bg-brand-blue text-brand-green font-sans m-0 p-0">
-
+<body class="bg-[#a7d8e5] font-['Poppins']">
     {% include 'navbar.html' %}
 
     <!-- PROFILE CARD -->
     <div class="profile-container">
-
         <div class="profile-header">Profile</div>
 
         <div class="profile-content">
+            <!-- Profile Picture -->
+            <div class="profile-photo">
+                <img src="{% if user.profile_pic_url %}{{ user.profile_pic_url }}{% else %}{{ url_for('static', filename='images/default-avatar.png') }}{% endif %}" alt="Profile Picture">
+            </div>
 
-            <!-- ICON + NAME -->
+            <div class="name">{{ user.first_name }} {{ user.last_name }}</div>
+
             <div class="detail-row">
-                <div class="avatar">
-                    {% if user.profile_picture %}
-                        <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Profile Picture" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                    {% else %}
-                        <i class="fas fa-user"></i>
-                    {% endif %}
-                </div>
-                <span id="display-name" class="name">{{ user.first_name }} {{ user.last_name }}</span>
+                <label>Email:</label>
+                <div class="value">{{ user.email }}</div>
             </div>
 
-            <hr class="border-gray-200 mb-6">
-
-            <!-- DETAILS -->
-            <div class="detail-row"><span class="label">Birth Date:</span> <span class="value">{{ user.birthdate_display
-                    }}</span></div>
-            <div class="detail-row"><span class="label">Gender:</span> <span class="value">{{ user.gender }}</span>
+            <div class="detail-row">
+                <label>Birth Date:</label>
+                <div class="value">{{ user.birthdate_display }}</div>
             </div>
-            <div class="detail-row"><span class="label">Height:</span> <span class="value">{{ user.height_display }}
-                    cm</span></div>
-            <div class="detail-row"><span class="label">Weight:</span> <span class="value">{{ user.weight_display }}
-                    kg</span></div>
-            <div class="detail-row"><span class="label">Email:</span> <span class="value">{{ user.email }}</span></div>
-            <div class="detail-row"><span class="label">Password:</span> <span class="value">{{ user.password_display
-                    }}</span></div>
+
+            <div class="detail-row">
+                <label>Gender:</label>
+                <div class="value">{{ user.gender }}</div>
+            </div>
+
+            <div class="detail-row">
+                <label>Height:</label>
+                <div class="value">{{ user.height_display }} cm</div>
+            </div>
+
+            <div class="detail-row">
+                <label>Weight:</label>
+                <div class="value">{{ user.weight_display }} kg</div>
+            </div>
+
+            <div class="detail-row">
+                <label>Password:</label>
+                <div class="value">{{ user.password_display }}</div>
+            </div>
 
             <!-- EDIT BUTTON -->
             <a href="{{ url_for('edit_profile', user_id=user['id']) }}" class="no-underline">
                 <button type="button" class="edit-btn">Edit</button>
             </a>
-
         </div>
     </div>
 

@@ -17,31 +17,13 @@
     </style>
 </head>
 
-<body class="bg-[#a5dbe5] text-[#23423c] font-sans m-0 p-0">
+<body class="bg-[#a5dbe5] text-[#104b0b] font-['Poppins'] m-0 p-0">
 
     {% include 'navbar.html' %}
 
     <main class="max-w-[1400px] mx-auto p-6 md:p-10">
 
-        <!-- Page Header -->
-        <div
-            class="flex flex-col md:flex-row items-center justify-between mb-8 bg-[#1f4f1e] text-white p-4 rounded-xl shadow-lg">
-            <div class="flex items-center gap-4">
-                <!-- Logo optional if already in navbar, keeping for completeness of 'header' migration if desired, utilizing icon instead -->
-                <i class="fas fa-wallet text-3xl text-[#f9d24b]"></i>
-                <div>
-                    <h1 class="text-2xl font-bold m-0">Budget & Expenses</h1>
-                    <div class="text-sm opacity-90 mt-1" id="todayLabel">Today:</div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-4 mt-4 md:mt-0 bg-white text-[#23423c] px-3 py-2 rounded-lg">
-                <select id="monthSelect"
-                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium"></select>
-                <select id="yearSelect"
-                    class="bg-transparent border-none outline-none font-inherit cursor-pointer text-sm font-medium ml-2"></select>
-            </div>
-        </div>
+        <!-- Header removed as requested -->
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -237,9 +219,49 @@
             "Others"
         ];
 
+        // UI-only mode: no server/database bindings
+        const serverExpenses = [];
+        const serverGroceries = [];
+        const serverSettings = {};
+        const currentMonthIso = new Date().toISOString().slice(0,7);
+
         let totalSpent = 0;
         const categoryTotals = {};
         categories.forEach((c) => (categoryTotals[c] = 0));
+
+        // Initialize logic from server data
+        function initData() {
+            // Set inputs
+            if (serverSettings.income) {
+                const incInput = document.getElementById('incomeInput');
+                if (incInput) incInput.value = serverSettings.income;
+            }
+            if (serverSettings.budget_limit) {
+                const budInput = document.getElementById('budgetInput');
+                if (budInput) budInput.value = serverSettings.budget_limit;
+            }
+
+            // Process expenses
+            serverExpenses.forEach(exp => {
+                const amt = exp.amount;
+                const cat = exp.category;
+                totalSpent += amt;
+                if (categoryTotals.hasOwnProperty(cat)) {
+                    categoryTotals[cat] += amt;
+                }
+            });
+
+            // Process groceries
+            serverGroceries.forEach(g => {
+                const amt = g.estimated_cost || 0;
+                // Groceries usually have a user-selected category or default to 'Groceries'
+                const cat = g.category || 'Groceries';
+                totalSpent += amt;
+                if (categoryTotals.hasOwnProperty(cat)) {
+                    categoryTotals[cat] += amt;
+                }
+            });
+        }
 
         const categoryColors = {
             "Groceries": "#8bc34a",
@@ -432,7 +454,48 @@
             eco.checked = projectedTotal <= budgetLimit;
         }
 
-        function addToTotals(amount, category) {
+        async function saveExpense(amount, category, date, notes, isEco) {
+            // UI-only: pretend save succeeded
+            return { ok: true };
+        }
+
+        function updateSettings() {
+            // UI-only: no server persistence. Optionally store locally.
+            try {
+                const income = Number(document.getElementById('incomeInput').value);
+                const limit = Number(document.getElementById('budgetInput').value);
+                localStorage.setItem('budget_income_' + currentMonthIso, String(income));
+                localStorage.setItem('budget_limit_' + currentMonthIso, String(limit));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function addGroceryRow(id, item, qty, cost, category, checked) {
+            const tbody = document.getElementById('groceryTableBody');
+            const inputRow = document.getElementById('groceryInputRow');
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+            tr.dataset.id = id;
+            tr.dataset.amount = String(cost);
+            tr.dataset.category = category || 'Groceries';
+
+            tr.innerHTML = `\
+                <td class="border border-gray-200 p-2 text-center">\
+                    <input type="checkbox" class="accent-[#0e4f23]" ${checked ? 'checked' : ''}>\
+                </td>\
+                <td class="border border-gray-200 p-2">${item}</td>\
+                <td class="border border-gray-200 p-2 text-center">${qty}</td>\
+                <td class="border border-gray-200 p-2 text-right">₱ ${Number(cost).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>\
+                <td class="border border-gray-200 p-2">${category || 'Groceries'}</td>\
+                <td class="border border-gray-200 p-2 text-center">\
+                    <button type="button" class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>\
+                </td>`;
+
+            tbody.insertBefore(tr, inputRow);
+        }
+
+        function addToTotalsLocal(amount, category) {
             totalSpent += amount;
             if (totalSpent < 0) totalSpent = 0;
 
@@ -446,36 +509,65 @@
         }
 
         function initHeaderDate() {
-            const todayLabel = document.getElementById("todayLabel");
+            const todayLabel = document.getElementById("currentDateDisplay");
             const today = new Date();
-            todayLabel.textContent =
-                "Today: " + today.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric"
-                });
+            if (todayLabel) {
+                todayLabel.textContent =
+                    today.toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric"
+                    });
+            }
 
             const monthSelect = document.getElementById("monthSelect");
             const months = [
                 "January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"
             ];
-            months.forEach((m, idx) => {
-                const opt = document.createElement("option");
-                opt.value = idx + 1;
-                opt.textContent = m;
-                if (idx === today.getMonth()) opt.selected = true;
-                monthSelect.appendChild(opt);
-            });
+            if (monthSelect) {
+                months.forEach((m, idx) => {
+                    const opt = document.createElement("option");
+                    opt.value = idx + 1;
+                    opt.textContent = m;
+                    if (idx === today.getMonth()) opt.selected = true;
+                    monthSelect.appendChild(opt);
+                });
+            }
 
             const yearSelect = document.getElementById("yearSelect");
             const currentYear = today.getFullYear();
-            for (let y = currentYear - 2; y <= currentYear + 5; y++) {
-                const opt = document.createElement("option");
-                opt.value = y;
-                opt.textContent = y;
-                if (y === currentYear) opt.selected = true;
-                yearSelect.appendChild(opt);
+            if (yearSelect) {
+                for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+                    const opt = document.createElement("option");
+                    opt.value = y;
+                    opt.textContent = y;
+                    if (y === currentYear) opt.selected = true;
+                    yearSelect.appendChild(opt);
+                }
+            }
+
+            // update visible combined label if present
+            const monthYearLabel = document.getElementById('monthYearLabel');
+            function refreshMonthYearLabel() {
+                if (!monthYearLabel) return;
+                const mIdx = monthSelect ? (parseInt(monthSelect.value, 10) - 1) : today.getMonth();
+                const yVal = yearSelect ? yearSelect.value : currentYear;
+                const mName = months[mIdx] || months[today.getMonth()];
+                monthYearLabel.textContent = `${mName} ${yVal}`;
+            }
+            if (monthYearLabel) {
+                refreshMonthYearLabel();
+                if (monthSelect) monthSelect.addEventListener('change', refreshMonthYearLabel);
+                if (yearSelect) yearSelect.addEventListener('change', refreshMonthYearLabel);
+
+                // clicking the white box will open the (hidden) select for accessibility
+                const monthPicker = document.getElementById('monthPicker');
+                if (monthPicker && monthSelect) {
+                    monthPicker.addEventListener('click', () => {
+                        monthSelect.focus();
+                    });
+                }
             }
         }
 
@@ -489,25 +581,33 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            initData();
             initHeaderDate();
             updateSummary();
             updateCategoryView();
 
             const expenseForm = document.getElementById("expenseForm");
-            expenseForm.addEventListener("submit", (e) => {
+            expenseForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const amount = Number(document.getElementById("expenseAmount").value);
                 const category = document.getElementById("expenseCategory").value;
                 const date = document.getElementById("expenseDate").value;
+                const notes = document.getElementById("expenseNotes").value;
+                const isEco = document.getElementById("ecoCheckbox").checked;
 
                 if (!amount || amount <= 0 || !category || !date) {
                     alert("Please fill in Amount, Category, and Date.");
                     return;
                 }
 
-                addToTotals(amount, category);
-                clearExpenseForm();
+                const result = await saveExpense(amount, category, date, notes, isEco);
+                if (result.ok) {
+                    addToTotalsLocal(amount, category);
+                    clearExpenseForm();
+                } else {
+                    alert('Failed to save expense');
+                }
             });
 
             document
@@ -516,18 +616,25 @@
 
             document
                 .getElementById("budgetInput")
-                .addEventListener("input", () => {
+                .addEventListener("change", () => {
                     updateSummary();
                     updateEcoCheckbox();
+                    updateSettings();
                 });
+
+            const incomeInput = document.getElementById("incomeInput");
+            if (incomeInput) {
+                incomeInput.addEventListener("change", updateSettings);
+            }
 
             document
                 .getElementById("clearExpenseBtn")
                 .addEventListener("click", () => clearExpenseForm());
 
             // Grocery list
+            // Grocery list
             const groceryForm = document.getElementById("groceryForm");
-            groceryForm.addEventListener("submit", (e) => {
+            groceryForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
 
                 const item = document.getElementById("groceryItem").value.trim();
@@ -540,82 +647,37 @@
                     return;
                 }
 
-                const tbody = document.getElementById("groceryTableBody");
-                const inputRow = document.getElementById("groceryInputRow");
+                // Get month from URL or default
+                const urlParams = new URLSearchParams(window.location.search);
+                const monthIso = urlParams.get('month') || new Date().toISOString().slice(0, 7);
 
-                const row = document.createElement("tr");
-                row.className = "hover:bg-gray-50 border-b border-gray-100";
-
-                const checkCell = document.createElement("td");
-                checkCell.className = "border border-gray-200 p-2 text-center";
-                const check = document.createElement("input");
-                check.type = "checkbox";
-                check.checked = true;
-                check.className = "accent-[#0e4f23]";
-                checkCell.appendChild(check);
-
-                const itemCell = document.createElement("td");
-                itemCell.className = "border border-gray-200 p-2";
-                itemCell.textContent = item;
-
-                const qtyCell = document.createElement("td");
-                qtyCell.className = "border border-gray-200 p-2 text-center";
-                qtyCell.textContent = qty;
-
-                const costCell = document.createElement("td");
-                costCell.className = "border border-gray-200 p-2 text-right";
-                costCell.textContent = formatCurrency(cost);
-
-                const categoryForTotals = budgetCat || "Groceries";
-                const budgetCatCell = document.createElement("td");
-                budgetCatCell.className = "border border-gray-200 p-2";
-                budgetCatCell.textContent = categoryForTotals;
-
-                const actionCell = document.createElement("td");
-                actionCell.className = "border border-gray-200 p-2 text-center";
-                const removeBtn = document.createElement("button");
-                removeBtn.type = "button";
-                removeBtn.textContent = "Remove";
-                removeBtn.className = "btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors";
-                actionCell.appendChild(removeBtn);
-
-                row.appendChild(checkCell);
-                row.appendChild(itemCell);
-                row.appendChild(qtyCell);
-                row.appendChild(costCell);
-                row.appendChild(budgetCatCell);
-                row.appendChild(actionCell);
-
-                // store data so we can subtract later
-                row.dataset.amount = cost;
-                row.dataset.category = categoryForTotals;
-
-                // insert ABOVE input row so input row stays at the bottom
-                tbody.insertBefore(row, inputRow);
-
-                addToTotals(cost, categoryForTotals);
-
+                // UI-only: add row locally without server
+                const id = 'local-' + Date.now();
+                addGroceryRow(id, item, qty, cost, budgetCat || 'Groceries', true);
+                addToTotalsLocal(cost, budgetCat || 'Groceries');
                 groceryForm.reset();
-                document.getElementById("groceryQty").value = 1;
             });
 
-            // Remove button in grocery table (event delegation)
+            // Remove and Checkbox in grocery table (event delegation)
             document
                 .getElementById("groceryTableBody")
-                .addEventListener("click", (e) => {
-                    if (!e.target.classList.contains("btn-remove")) return;
-
+                .addEventListener("click", async (e) => {
                     const row = e.target.closest("tr");
-                    if (!row || !row.dataset.amount) return;
-
+                    if (!row) return;
+                    const groceryId = row.dataset.id;
                     const amount = parseFloat(row.dataset.amount) || 0;
                     const category = row.dataset.category;
 
-                    if (amount && category) {
-                        addToTotals(-amount, category);
+                    if (e.target.classList.contains("btn-remove")) {
+                        // Client-side delete only
+                        if (confirm("Delete this item?")) {
+                            row.remove();
+                            addToTotalsLocal(-amount, category);
+                        }
+                    } else if (e.target.type === "checkbox") {
+                        // Client-side toggle only: no server update
+                        // Optionally update UI or local storage here
                     }
-
-                    row.remove();
                 });
 
             // Clear category buttons in Monthly Budget Summary
@@ -629,7 +691,7 @@
 
                     const amount = categoryTotals[cat] || 0;
                     if (amount > 0) {
-                        addToTotals(-amount, cat);
+                        addToTotalsLocal(-amount, cat);
                     }
                 });
         });
