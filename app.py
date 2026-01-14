@@ -16,39 +16,6 @@ app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-produc
 DB_PATH = Path(__file__).parent / 'users.db'
 
 def get_db() -> Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.execute('PRAGMA journal_mode=WAL;')
-        conn.execute('PRAGMA synchronous=NORMAL;')
-        conn.execute('PRAGMA foreign_keys=ON;')
-    except Exception:
-        pass
-    return conn
-
-def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-    # ... your CREATE TABLE statements ...
-    conn.commit()
-    conn.close()
-    
-# Ensure DB schema exists on startup
-try:
-    init_db()
-except Exception as _:
-    # don't prevent app from starting if init has issues; log to console
-    print('Warning: init_db() failed to run during startup')
-
-
-
-
-DB_PATH = Path(__file__).parent / 'users.db'
-
-
-
-
-def get_db() -> Connection:
    # Create a short-lived connection with a higher timeout and pragmatic settings
    # to reduce "database is locked" errors under concurrent access.
    conn = sqlite3.connect(DB_PATH, timeout=30)
@@ -121,6 +88,24 @@ def init_db():
        """
    )
 
+   # ---- monthly_budgets migrations (add missing columns/index) ----
+   try:
+       cur.execute("PRAGMA table_info(monthly_budgets)")
+       mb_cols = [r[1] for r in cur.fetchall()]
+
+       if 'updated_at' not in mb_cols:
+           try:
+               cur.execute("ALTER TABLE monthly_budgets ADD COLUMN updated_at TEXT")
+           except Exception:
+               pass
+
+       try:
+           cur.execute("CREATE INDEX IF NOT EXISTS idx_monthly_budgets_user_month ON monthly_budgets(user_email, month_iso)")
+       except Exception:
+           pass
+   except Exception:
+       pass
+
 
    # Create expenses table
    cur.execute(
@@ -159,6 +144,46 @@ def init_db():
        )
        """
    )
+
+   # ---- grocery_items migrations (add missing columns/backfill/index) ----
+   try:
+       cur.execute("PRAGMA table_info(grocery_items)")
+       g_cols = [r[1] for r in cur.fetchall()]
+
+       for col, ctype in [
+           ("month_iso", "TEXT"),
+           ("month", "INTEGER"),
+           ("year", "INTEGER"),
+           ("updated_at", "TEXT"),
+       ]:
+           if col not in g_cols:
+               try:
+                   cur.execute(f"ALTER TABLE grocery_items ADD COLUMN {col} {ctype}")
+               except Exception:
+                   pass
+
+       # Backfill month/year from month_iso where possible
+       try:
+           cur.execute(
+               """
+               UPDATE grocery_items
+               SET
+                   month = CAST(substr(month_iso, 6, 2) AS INTEGER),
+                   year  = CAST(substr(month_iso, 1, 4) AS INTEGER)
+               WHERE month_iso IS NOT NULL
+                 AND (month IS NULL OR year IS NULL)
+               """
+           )
+       except Exception:
+           pass
+
+       try:
+           cur.execute("CREATE INDEX IF NOT EXISTS idx_grocery_user_month ON grocery_items(user_email, month_iso)")
+       except Exception:
+           pass
+   except Exception:
+       pass
+
 
    # Create reminders table (one per user)
    cur.execute(
@@ -204,7 +229,7 @@ def init_db():
 
 
    if old_style:
-       # Create new table with the desired schema
+       # Create new table with the desired schema (MATCH current grocery_items schema)
        cur.execute(
            """
            CREATE TABLE IF NOT EXISTS grocery_items_new (
@@ -216,16 +241,34 @@ def init_db():
                category TEXT,
                is_checked INTEGER DEFAULT 0,
                month_iso TEXT,
+               month INTEGER,
                year INTEGER,
-               created_at TEXT
+               created_at TEXT,
+               updated_at TEXT
            )
            """
        )
        # Copy and map old columns to new columns
        try:
            cur.execute(
-               "INSERT INTO grocery_items_new (id, user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, created_at) "
-               "SELECT id, user_email, item AS item_name, qty AS quantity, cost AS estimated_cost, category, purchased AS is_checked, month_str AS month_iso, NULL FROM grocery_items"
+               """
+               INSERT INTO grocery_items_new
+               (id, user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, month, year, created_at, updated_at)
+               SELECT
+                   id,
+                   user_email,
+                   item AS item_name,
+                   qty AS quantity,
+                   cost AS estimated_cost,
+                   category,
+                   purchased AS is_checked,
+                   month_str AS month_iso,
+                   CAST(substr(month_str, 6, 2) AS INTEGER) AS month,
+                   CAST(substr(month_str, 1, 4) AS INTEGER) AS year,
+                   NULL,
+                   NULL
+               FROM grocery_items
+               """
            )
            cur.execute("DROP TABLE grocery_items")
            cur.execute("ALTER TABLE grocery_items_new RENAME TO grocery_items")
@@ -758,12 +801,14 @@ def api_create_task():
        return jsonify({'error': 'title required'}), 400
 
 
+   conn = get_db()
+   cur = conn.cursor()
+
    # server-side overlap validation when start_time and duration provided
    try:
        if start_time is not None and duration is not None:
            new_start = float(start_time)
            new_end = new_start + float(duration)
-           cur = conn.cursor()
            cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, task_date, new_end, new_start))
            if cur.fetchone():
                conn.close()
@@ -772,8 +817,6 @@ def api_create_task():
        pass
 
 
-   conn = get_db()
-   cur = conn.cursor()
    cur.execute(
        'INSERT INTO tasks (user_email, title, start_time, duration, color, is_priority, task_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
        (user_email, title, start_time, duration, color, is_priority, task_date, datetime.now().isoformat()),
@@ -920,12 +963,14 @@ def add_task():
        duration_val = None
 
 
+   conn = get_db()
+   cur = conn.cursor()
+
    # server-side overlap check for form submissions
    try:
        if start_time_val is not None and duration_val is not None:
            new_start = float(start_time_val)
            new_end = new_start + float(duration_val)
-           cur = conn.cursor()
            cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, task_date, new_end, new_start))
            if cur.fetchone():
                conn.close()
@@ -936,8 +981,6 @@ def add_task():
        pass
 
 
-   conn = get_db()
-   cur = conn.cursor()
    cur.execute(
        'INSERT INTO tasks (user_email, title, start_time, duration, color, is_priority, task_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
        (user_email, title, start_time_val, duration_val, color, is_priority, task_date, datetime.now().isoformat()),
