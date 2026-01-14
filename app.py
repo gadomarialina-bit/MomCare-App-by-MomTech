@@ -13,120 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-production')
 
-def init_db():
-    """Create users table if it doesn't exist, and migrate from users.json if present."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first TEXT NOT NULL,
-            last TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            birthdate TEXT,
-            password_hash TEXT NOT NULL,
-            security_question TEXT,
-            security_answer TEXT
-        )
-        """
-    )
-    conn.commit()
-    # Create tasks table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL,
-            title TEXT NOT NULL,
-            start_time REAL,
-            duration REAL,
-            color TEXT,
-            is_priority INTEGER DEFAULT 0,
-            task_date TEXT,
-            completed INTEGER DEFAULT 0,
-            created_at TEXT
-        )
-        """
-    )
-    # Create reminders table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS reminders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL UNIQUE,
-            message TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
-    # Create reminder_items table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS reminder_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL,
-            title TEXT,
-            message TEXT,
-            remind_at TEXT,
-            is_recurring INTEGER DEFAULT 0,
-            recurrence_rule TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
-    conn.commit()
-
-
-
-
-
-    # Migrate existing users from users.json if present
-    data_file = Path(__file__).parent / 'users.json'
-    if data_file.exists():
-        try:
-            with open(data_file, 'r', encoding='utf-8') as f:
-                users = json.load(f)
-        except Exception:
-            users = []
-
-
-        if users:
-            for u in users:
-                try:
-                    cur.execute(
-                        "INSERT OR IGNORE INTO users (first, last, email, birthdate, password_hash) VALUES (?, ?, ?, ?, ?)",
-                        (u.get('first'), u.get('last'), u.get('email'), u.get('birthdate'), u.get('password_hash')),
-                    )
-                except Exception:
-                    # ignore individual insert errors
-                    pass
-            conn.commit()
-            # rename migrated file to keep a backup
-            try:
-                data_file.rename(data_file.with_suffix('.json.bak'))
-            except Exception:
-                pass
-
-
-    conn.close()
-
-# Ensure DB schema exists on startup
-try:
-    init_db()
-except Exception as _:
-    # don't prevent app from starting if init has issues; log to console
-    print('Warning: init_db() failed to run during startup')
-
-
-
-
 DB_PATH = Path(__file__).parent / 'users.db'
-
-
-
 
 def get_db() -> Connection:
    # Create a short-lived connection with a higher timeout and pragmatic settings
@@ -149,28 +36,87 @@ def get_db() -> Connection:
 
 
 def init_db():
-    """Create users table if it doesn't exist, and migrate from users.json if present."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
+   """Create users table if it doesn't exist, and migrate from users.json if present."""
+   conn = get_db()
+   cur = conn.cursor()
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS users (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           first TEXT NOT NULL,
+           last TEXT NOT NULL,
+           email TEXT NOT NULL UNIQUE,
+           birthdate TEXT,
+           password_hash TEXT NOT NULL,
+           security_question TEXT,
+           security_answer TEXT,
+           gender TEXT,
+           height TEXT,
+           weight TEXT,
+           profile_picture TEXT
+       )
+       """
+   )
+   # Ensure older DBs have the expected security columns
+   try:
+       cur.execute("PRAGMA table_info(users)")
+       user_cols = [r[1] for r in cur.fetchall()]
+       if 'security_question' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN security_question TEXT")
+           except Exception:
+               pass
+       if 'security_answer' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN security_answer TEXT")
+           except Exception:
+               pass
+       if 'gender' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN gender TEXT")
+           except Exception:
+               pass
+       if 'height' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN height TEXT")
+           except Exception:
+               pass
+       if 'weight' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN weight TEXT")
+           except Exception:
+               pass
+       if 'profile_picture' not in user_cols:
+           try:
+               cur.execute("ALTER TABLE users ADD COLUMN profile_picture TEXT")
+           except Exception:
+               pass
+   except Exception:
+       # best-effort, proceed without failing init
+       pass
+  
+   # Create monthly_budgets table
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS monthly_budgets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first TEXT NOT NULL,
-            last TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            birthdate TEXT,
-            password_hash TEXT NOT NULL,
-            security_question TEXT,
-            security_answer TEXT
-        )
-        """
-    )
-    conn.commit()
-    # Create tasks table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS tasks (
+            user_email TEXT NOT NULL,
+            month_iso TEXT NOT NULL,
+            income REAL DEFAULT 0,
+            budget_limit REAL DEFAULT 0,
+            month INTEGER,
+            year INTEGER,
+            created_at TEXT,
+            UNIQUE(user_email, month_iso)
+       )
+       """
+   )
+
+
+   # Create expenses table
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_email TEXT NOT NULL,
             title TEXT NOT NULL,
@@ -181,72 +127,141 @@ def init_db():
             task_date TEXT,
             completed INTEGER DEFAULT 0,
             created_at TEXT
-        )
-        """
-    )
-    # Create reminders table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS reminders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL UNIQUE,
-            message TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
-    # Create reminder_items table
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS reminder_items (
+       )
+       """
+   )
+
+
+   # Create grocery_items table
+   cur.execute(
+       """
+        CREATE TABLE IF NOT EXISTS grocery_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_email TEXT NOT NULL,
-            title TEXT,
-            message TEXT,
-            remind_at TEXT,
-            is_recurring INTEGER DEFAULT 0,
-            recurrence_rule TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
-    conn.commit()
+            item_name TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            estimated_cost REAL,
+            category TEXT,
+            is_checked INTEGER DEFAULT 0,
+            month_iso TEXT,
+            month INTEGER,
+            year INTEGER,
+            created_at TEXT
+       )
+       """
+   )
+
+   # Create reminders table (one per user)
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS reminders (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           user_email TEXT NOT NULL UNIQUE,
+           message TEXT,
+           created_at TEXT,
+           updated_at TEXT
+       )
+       """
+   )
+   # Create reminder_items table for multiple scheduled reminders
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS reminder_items (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           user_email TEXT NOT NULL,
+           title TEXT,
+           message TEXT,
+           remind_at TEXT,
+           is_recurring INTEGER DEFAULT 0,
+           recurrence_rule TEXT,
+           created_at TEXT,
+           updated_at TEXT
+       )
+       """
+   )
+   # Migration: detect older schema variations and migrate data if necessary
+   cur.execute("PRAGMA table_info(grocery_items)")
+   cols = [r[1] for r in cur.fetchall()]
+   # If the DB has an old schema (item, qty, cost, month_str, purchased), rebuild table
+   old_style = set(["item", "qty", "cost", "month_str", "purchased"]).issubset(set(cols))
+   # If only month_iso is missing but month_str exists, add month_iso and copy values
+   if "month_iso" not in cols and "month_str" in cols and not old_style:
+       try:
+           cur.execute("ALTER TABLE grocery_items ADD COLUMN month_iso TEXT")
+           cur.execute("UPDATE grocery_items SET month_iso = month_str WHERE month_str IS NOT NULL")
+       except Exception:
+           # ignore; best-effort migration
+           pass
 
 
+   if old_style:
+       # Create new table with the desired schema
+       cur.execute(
+           """
+           CREATE TABLE IF NOT EXISTS grocery_items_new (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               user_email TEXT NOT NULL,
+               item_name TEXT NOT NULL,
+               quantity INTEGER DEFAULT 1,
+               estimated_cost REAL,
+               category TEXT,
+               is_checked INTEGER DEFAULT 0,
+               month_iso TEXT,
+               year INTEGER,
+               created_at TEXT
+           )
+           """
+       )
+       # Copy and map old columns to new columns
+       try:
+           cur.execute(
+               "INSERT INTO grocery_items_new (id, user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, created_at) "
+               "SELECT id, user_email, item AS item_name, qty AS quantity, cost AS estimated_cost, category, purchased AS is_checked, month_str AS month_iso, NULL FROM grocery_items"
+           )
+           cur.execute("DROP TABLE grocery_items")
+           cur.execute("ALTER TABLE grocery_items_new RENAME TO grocery_items")
+       except Exception:
+           # If migration fails, ignore to avoid crashing init; developer should inspect DB
+           pass
+   conn.commit()
 
 
-
-    # Migrate existing users from users.json if present
-    data_file = Path(__file__).parent / 'users.json'
-    if data_file.exists():
-        try:
-            with open(data_file, 'r', encoding='utf-8') as f:
-                users = json.load(f)
-        except Exception:
-            users = []
-
-
-        if users:
-            for u in users:
-                try:
-                    cur.execute(
-                        "INSERT OR IGNORE INTO users (first, last, email, birthdate, password_hash) VALUES (?, ?, ?, ?, ?)",
-                        (u.get('first'), u.get('last'), u.get('email'), u.get('birthdate'), u.get('password_hash')),
-                    )
-                except Exception:
-                    # ignore individual insert errors
-                    pass
-            conn.commit()
-            # rename migrated file to keep a backup
-            try:
-                data_file.rename(data_file.with_suffix('.json.bak'))
-            except Exception:
-                pass
+   # Migrate existing users from users.json if present
+   data_file = Path(__file__).parent / 'users.json'
+   if data_file.exists():
+       try:
+           with open(data_file, 'r', encoding='utf-8') as f:
+               users = json.load(f)
+       except Exception:
+           users = []
 
 
-    conn.close()
+       if users:
+           for u in users:
+               try:
+                   cur.execute(
+                       "INSERT OR IGNORE INTO users (first, last, email, birthdate, password_hash) VALUES (?, ?, ?, ?, ?)",
+                       (u.get('first'), u.get('last'), u.get('email'), u.get('birthdate'), u.get('password_hash')),
+                   )
+               except Exception:
+                   # ignore individual insert errors
+                   pass
+           conn.commit()
+           # rename migrated file to keep a backup
+           try:
+               data_file.rename(data_file.with_suffix('.json.bak'))
+           except Exception:
+               pass
+
+
+   conn.close()
+
+# Ensure DB schema exists on startup
+try:
+    init_db()
+except Exception as _:
+    # don't prevent app from starting if init has issues; log to console
+    print('Warning: init_db() failed to run during startup')
 
 
 
@@ -574,9 +589,6 @@ def verify_security_answer():
    flash('Password reset successfully! Please log in with your new password.')
    return redirect(url_for('index'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
 
 
 
@@ -656,29 +668,6 @@ def dashboard():
 
 
 
-def init_tasks_table():
-   """Create tasks table if it doesn't exist."""
-   conn = get_db()
-   cur = conn.cursor()
-   cur.execute(
-       """
-       CREATE TABLE IF NOT EXISTS tasks (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           user_email TEXT NOT NULL,
-           title TEXT NOT NULL,
-           start_time REAL,
-           duration REAL,
-           color TEXT,
-           is_priority INTEGER DEFAULT 0,
-           task_date TEXT,
-           completed INTEGER DEFAULT 0,
-           created_at TEXT
-       )
-       """
-   )
-   conn.commit()
-   conn.close()
-
 
 
 
@@ -747,7 +736,8 @@ def api_create_task():
                return jsonify({'error': 'overlap'}), 400
    except Exception:
        pass
-   cur = conn.cursor()
+
+
    cur.execute(
        'INSERT INTO tasks (user_email, title, start_time, duration, color, is_priority, task_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
        (user_email, title, start_time, duration, color, is_priority, task_date, datetime.now().isoformat()),
@@ -909,7 +899,8 @@ def add_task():
                return redirect(url_for(next_view))
    except Exception:
        pass
-   cur = conn.cursor()
+
+
    cur.execute(
        'INSERT INTO tasks (user_email, title, start_time, duration, color, is_priority, task_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
        (user_email, title, start_time_val, duration_val, color, is_priority, task_date, datetime.now().isoformat()),
@@ -1082,7 +1073,7 @@ def logout():
 
 
 
-@app.route('/my_account', endpoint='my_account_page')
+@app.route('/my_account')
 def my_account():
     user_email = session.get('user_email')
     if not user_email:
@@ -1277,7 +1268,15 @@ def edit_profile(user_id):
         flash('Profile updated successfully.')
         return redirect(url_for('profile', user_id=user_id))
 
+
+    # For GET request, render the edit form
     first = session.get('user_first')
     today = datetime.now().strftime('%B %d, %Y')
-
     return render_template('edit.html', user=user, first=first, today=today)
+
+
+
+
+
+if __name__ == '__main__':
+   app.run(debug=True)

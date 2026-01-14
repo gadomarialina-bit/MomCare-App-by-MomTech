@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentDate = new Date();
     const today = new Date();
-    let selectedDate = null; // user must click a date first
+    let selectedDate = new Date(); // default to today
     let selectedTaskId = null; // for edit/delete
     let fetchedTasks = [];
 
@@ -132,6 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // If date is selected, enable add button
+        btnAddTask.classList.remove('opacity-60', 'cursor-not-allowed');
+
         // Render tasks
         // Filter tasks by selectedDate
         const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -180,43 +183,43 @@ document.addEventListener('DOMContentLoaded', () => {
             const availWidth = Math.max(containerWidth - baseLeft - 16, 200);
             const colWidth = Math.floor((availWidth - (totalCols - 1) * gap) / totalCols);
 
-                // render items
-                items.forEach(task => {
-                    const taskEl = document.createElement('div');
-                    taskEl.className = 'task-item absolute rounded-md px-2 py-1 text-sm text-[#104b0b] shadow flex items-start justify-between';
-                    if (task.is_priority) taskEl.classList.add('priority', 'border-2', 'border-red-600');
-                    const top = task.startMin;
-                    const height = Math.max(task.endMin - task.startMin, 10);
-                    const leftPx = baseLeft + (task._col * (colWidth + gap));
-                    taskEl.style.top = `${top}px`;
-                    taskEl.style.height = `${height}px`;
-                    taskEl.style.left = `${leftPx}px`;
-                    taskEl.style.width = `${colWidth}px`;
-                    taskEl.setAttribute('data-task-id', task.id);
-                    taskEl.style.backgroundColor = getColor(task.color);
+            // render items
+            items.forEach(task => {
+                const taskEl = document.createElement('div');
+                taskEl.className = 'task-item absolute rounded-md px-2 py-1 text-sm text-[#104b0b] shadow flex items-start justify-between';
+                if (task.is_priority) taskEl.classList.add('priority', 'border-2', 'border-red-600');
+                const top = task.startMin;
+                const height = Math.max(task.endMin - task.startMin, 10);
+                const leftPx = baseLeft + (task._col * (colWidth + gap));
+                taskEl.style.top = `${top}px`;
+                taskEl.style.height = `${height}px`;
+                taskEl.style.left = `${leftPx}px`;
+                taskEl.style.width = `${colWidth}px`;
+                taskEl.setAttribute('data-task-id', task.id);
+                taskEl.style.backgroundColor = getColor(task.color);
 
-                    const titleDiv = document.createElement('div');
-                    titleDiv.className = 'flex-1 truncate pr-2';
-                    titleDiv.textContent = task.title;
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'flex-1 truncate pr-2';
+                titleDiv.textContent = task.title;
 
-                    const doneBtn = document.createElement('button');
-                    doneBtn.className = 'ml-2 text-green-700 bg-white/60 hover:bg-white/80 rounded-full w-7 h-7 flex items-center justify-center text-xs';
-                    doneBtn.title = 'Mark as done';
-                    doneBtn.innerHTML = '<i class="fas fa-check"></i>';
-                    doneBtn.addEventListener('click', (e) => { e.stopPropagation(); markTaskDone(task.id, true); });
+                const doneBtn = document.createElement('button');
+                doneBtn.className = 'ml-2 text-green-700 bg-white/60 hover:bg-white/80 rounded-full w-7 h-7 flex items-center justify-center text-xs';
+                doneBtn.title = 'Mark as done';
+                doneBtn.innerHTML = '<i class="fas fa-check"></i>';
+                doneBtn.addEventListener('click', (e) => { e.stopPropagation(); markTaskDone(task.id, true); });
 
-                    taskEl.appendChild(titleDiv);
-                    taskEl.appendChild(doneBtn);
-                    taskEl.addEventListener('click', (e) => { e.stopPropagation(); selectTask(task.id); });
-                    timelineGrid.appendChild(taskEl);
-                });
+                taskEl.appendChild(titleDiv);
+                taskEl.appendChild(doneBtn);
+                taskEl.addEventListener('click', (e) => { e.stopPropagation(); selectTask(task.id); });
+                timelineGrid.appendChild(taskEl);
+            });
         });
 
-            // Update counts (pass all tasks for the date so completed count is accurate)
-            updateStats(todaysAllTasks);
+        // Update counts (pass all tasks for the date so completed count is accurate)
+        updateStats(todaysAllTasks);
 
-            // Render the completed tasks list for this date
-            renderDoneList(doneTasks);
+        // Render the completed tasks list for this date
+        renderDoneList(doneTasks);
     }
 
     function getColor(colorName) {
@@ -379,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/[&<>"']/g, function (s) {
-            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s];
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" })[s];
         });
     }
 
@@ -391,10 +394,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         createReminderBtn.disabled = true;
         fetch('/api/reminders', {
-            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         }).then(res => res.json()).then(data => {
             createReminderBtn.disabled = false;
-                if (data.error) { showToast('Unable to create reminder: ' + data.error, 'error'); return; }
+            if (data.error) { showToast('Unable to create reminder: ' + data.error, 'error'); return; }
             // clear form
             newReminderTitle.value = '';
             newReminderAt.value = '';
@@ -422,9 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.className = 'p-2 border rounded-md bg-gray-50';
             li.innerHTML = `
-                <input class="w-full mb-2 p-2 border rounded-md" data-edit-id value="${escapeHtml(item.title||'')}">
-                <input type="datetime-local" class="w-full mb-2 p-2 border rounded-md" data-edit-at value="${item.remind_at?item.remind_at.replace('Z','') : ''}">
-                <textarea class="w-full mb-2 p-2 border rounded-md" data-edit-msg rows="2">${escapeHtml(item.message||'')}</textarea>
+                <input class="w-full mb-2 p-2 border rounded-md" data-edit-id value="${escapeHtml(item.title || '')}">
+                <input type="datetime-local" class="w-full mb-2 p-2 border rounded-md" data-edit-at value="${item.remind_at ? item.remind_at.replace('Z', '') : ''}">
+                <textarea class="w-full mb-2 p-2 border rounded-md" data-edit-msg rows="2">${escapeHtml(item.message || '')}</textarea>
                 <div class="flex gap-2">
                     <button data-save-id class="bg-green-600 text-white px-3 py-1 rounded-md text-sm">Save</button>
                     <button data-cancel class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm">Cancel</button>
@@ -438,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const at = li.querySelector('[data-edit-at]').value || null;
                 const msg = li.querySelector('[data-edit-msg]').value;
                 fetch(`/api/reminders/${id}`, {
-                    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title, message: msg, remind_at: at })
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, message: msg, remind_at: at })
                 }).then(res => res.json()).then(() => loadReminderItems()).catch(err => { console.error(err); showToast('Error updating reminder', 'error'); });
             });
         });
