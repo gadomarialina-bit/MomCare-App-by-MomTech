@@ -2,700 +2,967 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MomCare Budget & Expenses</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MomCare Budget & Expenses</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+  </style>
 </head>
 
 <body class="bg-[#a5dbe5] text-[#104b0b] font-['Poppins'] m-0 p-0">
 
-    {% include 'navbar.html' %}
+  {% include 'navbar.html' %}
 
-    <main class="max-w-[1400px] mx-auto p-6 md:p-10">
+  <main class="max-w-[1400px] mx-auto p-6 md:p-10">
 
-        <!-- Header removed as requested -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Monthly Budget Summary -->
+      <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
+        <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Monthly Budget Summary</div>
+        <div class="p-6 flex-1 text-sm">
+          <div class="flex justify-between mb-3 text-[15px]">
+            <div class="font-medium">Monthly Income</div>
+            <div>
+              <input type="number" id="incomeInput" value="160000" min="0"
+                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
+            </div>
+          </div>
+          <div class="flex justify-between mb-3 text-[15px]">
+            <div class="font-medium">Monthly Budget Limit</div>
+            <div>
+              <input type="number" id="budgetInput" value="160000" min="0"
+                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
+            </div>
+          </div>
+          <div class="flex justify-between mb-3 text-[15px]">
+            <div class="font-medium">Total Spent This Month</div>
+            <div class="font-bold text-[#1f4f1e]" id="totalSpentDisplay">₱ 0.00</div>
+          </div>
 
-            <!-- Monthly Budget Summary -->
-            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
-                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Monthly Budget Summary</div>
-                <div class="p-6 flex-1 text-sm">
-                    <div class="flex justify-between mb-3 text-[15px]">
-                        <div class="font-medium">Monthly Income</div>
-                        <div>
-                            <input type="number" id="incomeInput" value="160000" min="0"
-                                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
-                        </div>
-                    </div>
-                    <div class="flex justify-between mb-3 text-[15px]">
-                        <div class="font-medium">Monthly Budget Limit</div>
-                        <div>
-                            <input type="number" id="budgetInput" value="160000" min="0"
-                                class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
-                        </div>
-                    </div>
-                    <div class="flex justify-between mb-3 text-[15px]">
-                        <div class="font-medium">Total Spent This Month</div>
-                        <div class="font-bold text-[#1f4f1e]" id="totalSpentDisplay">₱ 0.00</div>
-                    </div>
+          <div class="border-t border-dashed border-gray-400 my-4"></div>
 
-                    <div class="border-t border-dashed border-gray-400 my-4"></div>
+          <div id="categorySummary" class="text-[13px] my-2"></div>
 
-                    <div id="categorySummary" class="text-[13px] my-2"></div>
-
-                    <div class="flex justify-between mt-2 font-medium text-[#0e4f23]">
-                        <div id="budgetUsedLabel">0% Budget Used</div>
-                        <div id="remainingDisplay">Remaining: ₱ 0.00</div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- Spending Category -->
-            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
-                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Spending Category</div>
-                <div class="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8">
-                    <div class="relative w-[160px] h-[160px] shrink-0">
-                        <canvas id="pieChart" width="160" height="160"
-                            class="rounded-full shadow-[0_0_0_8px_#f1f8e9] bg-white"></canvas>
-                    </div>
-                    <div class="flex-1 w-full max-w-[320px]" id="categoryList">
-                        <!-- Legend Items go here -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Add Expense -->
-            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
-                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Add Expense</div>
-                <div class="p-6 flex-1">
-                    <form id="expenseForm">
-                        <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 items-center text-sm">
-                            <label class="font-medium" for="expenseAmount">Amount</label>
-                            <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Enter amount"
-                                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
-
-                            <label class="font-medium" for="expenseCategory">Category</label>
-                            <select id="expenseCategory"
-                                class="w-full border border-gray-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-[#ed008c]">
-                                <option value="">Select category</option>
-                                <option>Groceries</option>
-                                <option>Kids/School</option>
-                                <option>Transport</option>
-                                <option>Utilities</option>
-                                <option>Home Mortgage</option>
-                                <option>Subscription</option>
-                                <option>Savings</option>
-                                <option>Others</option>
-                            </select>
-
-                            <label class="font-medium" for="expenseDate">Date</label>
-                            <input id="expenseDate" type="date"
-                                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
-
-                            <div class="col-span-2 flex items-center gap-2 mt-1">
-                                <div
-                                    class="w-5 h-5 border-2 border-[#0e4f23] rounded flex items-center justify-center bg-white">
-                                    <input type="checkbox" id="ecoCheckbox" disabled
-                                        class="w-3.5 h-3.5 accent-[#0e4f23]">
-                                </div>
-                                <span>Mark as Eco-Spending</span>
-                                <span class="text-[#4caf50]">🍃</span>
-                            </div>
-
-                            <div class="col-span-2 grid grid-cols-[auto_1fr] gap-x-4">
-                                <label class="font-medium pt-1" for="expenseNotes">Notes</label>
-                                <textarea id="expenseNotes" placeholder="Add any details about this expense"
-                                    class="w-full border border-gray-300 rounded px-2 py-1.5 min-h-[60px] focus:outline-none focus:border-[#ed008c] resize-y"></textarea>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end gap-3 mt-4">
-                            <button type="button" id="clearExpenseBtn"
-                                class="px-4 py-2 rounded-full text-[#607d8b] bg-transparent hover:bg-gray-100 font-medium transition-colors">Cancel</button>
-                            <button type="submit"
-                                class="px-4 py-2 rounded-full bg-[#0e4f23] text-white font-medium hover:opacity-90 transition-opacity">Add
-                                Expense</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-            <!-- Grocery & Household List -->
-            <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
-                <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Grocery & Household List</div>
-                <div class="p-6 flex-1">
-                    <form id="groceryForm">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-[13px] border-collapse table-fixed min-w-[500px]">
-                                <colgroup>
-                                    <col style="width: 5%;">
-                                    <col style="width: 30%;">
-                                    <col style="width: 10%;">
-                                    <col style="width: 18%;">
-                                    <col style="width: 27%;">
-                                    <col style="width: 10%;">
-                                </colgroup>
-                                <thead>
-                                    <tr class="bg-gray-100 font-semibold text-left">
-                                        <th class="border border-gray-200 p-2 text-center">✓</th>
-                                        <th class="border border-gray-200 p-2">Item</th>
-                                        <th class="border border-gray-200 p-2">Qty</th>
-                                        <th class="border border-gray-200 p-2">Est. Cost</th>
-                                        <th class="border border-gray-200 p-2">Budget Category</th>
-                                        <th class="border border-gray-200 p-2">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="groceryTableBody">
-                                    <tr id="groceryInputRow" class="hover:bg-gray-50">
-                                        <td class="border border-gray-200 p-2"></td>
-                                        <td class="border border-gray-200 p-2">
-                                            <input type="text" id="groceryItem" placeholder="Item" required
-                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
-                                        </td>
-                                        <td class="border border-gray-200 p-2">
-                                            <input type="number" id="groceryQty" placeholder="Qty" min="1" value="1"
-                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
-                                        </td>
-                                        <td class="border border-gray-200 p-2">
-                                            <input type="number" id="groceryCost" placeholder="Est. Cost" min="0"
-                                                step="0.01" required
-                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
-                                        </td>
-                                        <td class="border border-gray-200 p-2">
-                                            <select id="groceryBudgetCat"
-                                                class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs bg-white">
-                                                <option value="">Budget Category</option>
-                                                <option>Groceries</option>
-                                                <option>Kids/School</option>
-                                                <option>Transport</option>
-                                                <option>Utilities</option>
-                                                <option>Home Mortgage</option>
-                                                <option>Subscription</option>
-                                                <option>Savings</option>
-                                                <option>Others</option>
-                                            </select>
-                                        </td>
-                                        <td class="border border-gray-200 p-2"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mt-4 flex justify-between items-center">
-                            <div class="text-[13px] text-gray-500 italic">Type items directly into the last row above.
-                            </div>
-                            <button type="submit"
-                                class="px-6 py-2 rounded-full bg-[#0e4f23] text-white text-sm font-medium hover:opacity-90 transition-opacity">Add
-                                to List</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+          <div class="flex justify-between mt-2 font-medium text-[#0e4f23]">
+            <div id="budgetUsedLabel">0% Budget Used</div>
+            <div id="remainingDisplay">Remaining: ₱ 0.00</div>
+          </div>
 
         </div>
-    </main>
+      </section>
 
-    <script>
-        const categories = [
-            "Groceries",
-            "Kids/School",
-            "Transport",
-            "Utilities",
-            "Home Mortgage",
-            "Subscription",
-            "Savings",
-            "Others"
-        ];
+      <!-- Spending Category -->
+      <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col min-h-[260px]">
+        <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Spending Category</div>
+        <div class="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8">
+          <div class="relative w-[160px] h-[160px] shrink-0">
+            <canvas id="pieChart" width="160" height="160"
+              class="rounded-full shadow-[0_0_0_8px_#f1f8e9] bg-white"></canvas>
+          </div>
+          <div class="flex-1 w-full max-w-[320px]" id="categoryList"></div>
+        </div>
+      </section>
 
-        // UI-only mode: no server/database bindings
-        const serverExpenses = [];
-        const serverGroceries = [];
-        const serverSettings = {};
-        const currentMonthIso = new Date().toISOString().slice(0,7);
+      <!-- Add Expense -->
+      <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
+        <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Add Expense</div>
+        <div class="p-6 flex-1">
+          <form id="expenseForm">
+            <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 items-center text-sm">
+              <label class="font-medium" for="expenseAmount">Amount</label>
+              <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Enter amount"
+                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
 
-        let totalSpent = 0;
-        const categoryTotals = {};
-        categories.forEach((c) => (categoryTotals[c] = 0));
+              <label class="font-medium" for="expenseCategory">Category</label>
+              <select id="expenseCategory"
+                class="w-full border border-gray-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-[#ed008c]">
+                <option value="">Select category</option>
+                <option>Groceries</option>
+                <option>Kids/School</option>
+                <option>Transport</option>
+                <option>Utilities</option>
+                <option>Home Mortgage</option>
+                <option>Subscription</option>
+                <option>Savings</option>
+                <option>Others</option>
+              </select>
 
-        // Initialize logic from server data
-        function initData() {
-            // Set inputs
-            if (serverSettings.income) {
-                const incInput = document.getElementById('incomeInput');
-                if (incInput) incInput.value = serverSettings.income;
-            }
-            if (serverSettings.budget_limit) {
-                const budInput = document.getElementById('budgetInput');
-                if (budInput) budInput.value = serverSettings.budget_limit;
-            }
+              <label class="font-medium" for="expenseDate">Date</label>
+              <input id="expenseDate" type="date"
+                class="w-full border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:border-[#ed008c]">
 
-            // Process expenses
-            serverExpenses.forEach(exp => {
-                const amt = exp.amount;
-                const cat = exp.category;
-                totalSpent += amt;
-                if (categoryTotals.hasOwnProperty(cat)) {
-                    categoryTotals[cat] += amt;
-                }
-            });
+              <div class="col-span-2 flex items-center gap-2 mt-1">
+                <div class="w-5 h-5 border-2 border-[#0e4f23] rounded flex items-center justify-center bg-white">
+                  <input type="checkbox" id="ecoCheckbox" disabled class="w-3.5 h-3.5 accent-[#0e4f23]">
+                </div>
+                <span>Mark as Eco-Spending</span>
+                <span class="text-[#4caf50]">🍃</span>
+              </div>
 
-            // Process groceries
-            serverGroceries.forEach(g => {
-                const amt = g.estimated_cost || 0;
-                // Groceries usually have a user-selected category or default to 'Groceries'
-                const cat = g.category || 'Groceries';
-                totalSpent += amt;
-                if (categoryTotals.hasOwnProperty(cat)) {
-                    categoryTotals[cat] += amt;
-                }
-            });
-        }
+              <div class="col-span-2 grid grid-cols-[auto_1fr] gap-x-4">
+                <label class="font-medium pt-1" for="expenseNotes">Notes</label>
+                <textarea id="expenseNotes" placeholder="Add any details about this expense"
+                  class="w-full border border-gray-300 rounded px-2 py-1.5 min-h-[60px] focus:outline-none focus:border-[#ed008c] resize-y"></textarea>
+              </div>
+            </div>
 
-        const categoryColors = {
-            "Groceries": "#8bc34a",
-            "Kids/School": "#ffb74d",
-            "Transport": "#4dd0e1",
-            "Utilities": "#ba68c8",
-            "Home Mortgage": "#ef5350",
-            "Subscription": "#66bb6a",
-            "Savings": "#ffd54f",
-            "Others": "#90a4ae"
+            <div class="flex justify-end gap-3 mt-4">
+              <button type="button" id="clearExpenseBtn"
+                class="px-4 py-2 rounded-full text-[#607d8b] bg-transparent hover:bg-gray-100 font-medium transition-colors">Cancel</button>
+              <button type="submit"
+                class="px-4 py-2 rounded-full bg-[#0e4f23] text-white font-medium hover:opacity-90 transition-opacity">Add
+                Expense</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Grocery & Household List -->
+      <section class="bg-white rounded-xl overflow-hidden shadow-md flex flex-col">
+        <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Grocery & Household List</div>
+        <div class="p-6 flex-1">
+          <form id="groceryForm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-[13px] border-collapse table-fixed min-w-[500px]">
+                <colgroup>
+                  <col style="width: 5%;">
+                  <col style="width: 30%;">
+                  <col style="width: 10%;">
+                  <col style="width: 18%;">
+                  <col style="width: 27%;">
+                  <col style="width: 10%;">
+                </colgroup>
+                <thead>
+                  <tr class="bg-gray-100 font-semibold text-left">
+                    <th class="border border-gray-200 p-2 text-center">✓</th>
+                    <th class="border border-gray-200 p-2">Item</th>
+                    <th class="border border-gray-200 p-2">Qty</th>
+                    <th class="border border-gray-200 p-2">Est. Cost</th>
+                    <th class="border border-gray-200 p-2">Budget Category</th>
+                    <th class="border border-gray-200 p-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="groceryTableBody">
+                  <tr id="groceryInputRow" class="hover:bg-gray-50">
+                    <td class="border border-gray-200 p-2"></td>
+                    <td class="border border-gray-200 p-2">
+                      <input type="text" id="groceryItem" placeholder="Item" required
+                        class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                    </td>
+                    <td class="border border-gray-200 p-2">
+                      <input type="number" id="groceryQty" placeholder="Qty" min="1" value="1"
+                        class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                    </td>
+                    <td class="border border-gray-200 p-2">
+                      <input type="number" id="groceryCost" placeholder="Est. Cost" min="0" step="0.01" required
+                        class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs">
+                    </td>
+                    <td class="border border-gray-200 p-2">
+                      <select id="groceryBudgetCat"
+                        class="w-full border border-gray-300 rounded px-1.5 py-1 text-xs bg-white">
+                        <option value="">Budget Category</option>
+                        <option>Groceries</option>
+                        <option>Kids/School</option>
+                        <option>Transport</option>
+                        <option>Utilities</option>
+                        <option>Home Mortgage</option>
+                        <option>Subscription</option>
+                        <option>Savings</option>
+                        <option>Others</option>
+                      </select>
+                    </td>
+                    <td class="border border-gray-200 p-2"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-4 flex justify-between items-center">
+              <div class="text-[13px] text-gray-500 italic">Type items directly into the last row above.</div>
+              <button type="submit"
+                class="px-6 py-2 rounded-full bg-[#0e4f23] text-white text-sm font-medium hover:opacity-90 transition-opacity">Add
+                to List</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    /******************************************************************
+     * MomCare Local Persistence (per-month) - v1
+     * - Stores settings, expenses, groceries, and draft inputs per month
+     * - Uses URL param ?month=YYYY-MM as the active month (preferred)
+     * - Falls back to localStorage "selected month"
+     * - Hard deletes records (removes from UI + storage)
+     ******************************************************************/
+    const categories = [
+      "Groceries",
+      "Kids/School",
+      "Transport",
+      "Utilities",
+      "Home Mortgage",
+      "Subscription",
+      "Savings",
+      "Others"
+    ];
+
+    const categoryColors = {
+      "Groceries": "#8bc34a",
+      "Kids/School": "#ffb74d",
+      "Transport": "#4dd0e1",
+      "Utilities": "#ba68c8",
+      "Home Mortgage": "#ef5350",
+      "Subscription": "#66bb6a",
+      "Savings": "#ffd54f",
+      "Others": "#90a4ae"
+    };
+
+    const STORE_KEY = "momcare_budget_v1";
+
+    function nowIso() { return new Date().toISOString(); }
+
+    function uuid() {
+      return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function safeParseJSON(str, fallback) {
+      try { return JSON.parse(str); } catch { return fallback; }
+    }
+
+    function loadStore() {
+      const base = { ui: { selectedMonth: null }, months: {} };
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return base;
+      const parsed = safeParseJSON(raw, base);
+      if (!parsed || typeof parsed !== "object") return base;
+      parsed.ui = parsed.ui || { selectedMonth: null };
+      parsed.months = parsed.months || {};
+      return parsed;
+    }
+
+    function saveStore(store) {
+      localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    }
+
+    function getMonthIsoFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const m = urlParams.get("month");
+      if (m && /^\d{4}-\d{2}$/.test(m)) return m;
+      return null;
+    }
+
+    function getDefaultMonthIso() {
+      return new Date().toISOString().slice(0, 7);
+    }
+
+    function getActiveMonthIso() {
+      const store = loadStore();
+      const fromUrl = getMonthIsoFromUrl();
+      if (fromUrl) {
+        store.ui.selectedMonth = fromUrl;
+        saveStore(store);
+        return fromUrl;
+      }
+      if (store.ui.selectedMonth && /^\d{4}-\d{2}$/.test(store.ui.selectedMonth)) {
+        return store.ui.selectedMonth;
+      }
+      const def = getDefaultMonthIso();
+      store.ui.selectedMonth = def;
+      saveStore(store);
+      return def;
+    }
+
+    function ensureMonth(store, monthIso) {
+      if (!store.months[monthIso]) {
+        store.months[monthIso] = {
+          settings: { income: 160000, budget_limit: 160000 },
+          expenses: [],
+          groceries: [],
+          drafts: {
+            expense: { amount: "", category: "", date: "", notes: "" },
+            grocery: { item: "", qty: "1", cost: "", category: "" }
+          }
         };
+      } else {
+        store.months[monthIso].settings = store.months[monthIso].settings || { income: 160000, budget_limit: 160000 };
+        store.months[monthIso].expenses = store.months[monthIso].expenses || [];
+        store.months[monthIso].groceries = store.months[monthIso].groceries || [];
+        store.months[monthIso].drafts = store.months[monthIso].drafts || {
+          expense: { amount: "", category: "", date: "", notes: "" },
+          grocery: { item: "", qty: "1", cost: "", category: "" }
+        };
+        store.months[monthIso].drafts.expense = store.months[monthIso].drafts.expense || { amount: "", category: "", date: "", notes: "" };
+        store.months[monthIso].drafts.grocery = store.months[monthIso].drafts.grocery || { item: "", qty: "1", cost: "", category: "" };
+      }
+      return store.months[monthIso];
+    }
+
+    function formatCurrency(value) {
+      const num = isNaN(value) ? 0 : value;
+      return "₱ " + num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function computeTotals(monthData) {
+      let totalSpent = 0;
+      const categoryTotals = {};
+      categories.forEach(c => categoryTotals[c] = 0);
+
+      for (const exp of monthData.expenses) {
+        const amt = Number(exp.amount) || 0;
+        const cat = exp.category;
+        totalSpent += amt;
+        if (categoryTotals.hasOwnProperty(cat)) categoryTotals[cat] += amt;
+      }
+
+      for (const g of monthData.groceries) {
+        const amt = Number(g.cost) || 0;
+        const cat = g.category || "Groceries";
+        totalSpent += amt;
+        if (categoryTotals.hasOwnProperty(cat)) categoryTotals[cat] += amt;
+      }
+
+      return { totalSpent, categoryTotals };
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // ---- UI state ----
+    let ACTIVE_MONTH = null;
+    let TOTAL_SPENT = 0;
+    let CATEGORY_TOTALS = {};
+    categories.forEach(c => CATEGORY_TOTALS[c] = 0);
+
+    // ---- UI render helpers ----
+    function updateEcoCheckbox() {
+      const eco = document.getElementById("ecoCheckbox");
+      if (!eco) return;
+
+      const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
+      const pendingAmount = Number(document.getElementById("expenseAmount").value) || 0;
+
+      if (budgetLimit <= 0) { eco.checked = false; return; }
+
+      const projectedTotal = TOTAL_SPENT + pendingAmount;
+      eco.checked = projectedTotal <= budgetLimit;
+    }
+
+    function drawPieChart() {
+      const canvas = document.getElementById("pieChart");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) / 2 - 2;
+
+      ctx.clearRect(0, 0, width, height);
+
+      if (TOTAL_SPENT <= 0) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#e8f5e9";
+        ctx.fill();
+        return;
+      }
+
+      let startAngle = -Math.PI / 2;
+
+      categories.forEach(cat => {
+        const value = CATEGORY_TOTALS[cat] || 0;
+        if (!value) return;
+
+        const sliceAngle = (value / TOTAL_SPENT) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = categoryColors[cat] || "#ccc";
+        ctx.fill();
+        startAngle += sliceAngle;
+      });
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+    }
 
-        function formatCurrency(value) {
-            const num = isNaN(value) ? 0 : value;
-            return "₱ " + num.toLocaleString("en-PH", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        function updateSummary() {
-            const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
-
-            document.getElementById("totalSpentDisplay").textContent =
-                formatCurrency(totalSpent);
-
-            let percent = 0;
-            if (budgetLimit > 0) {
-                percent = (totalSpent / budgetLimit) * 100;
-            }
-
-            document.getElementById("budgetUsedLabel").textContent =
-                `${percent.toFixed(1)}% Budget Used`;
-
-            const remaining = budgetLimit - totalSpent;
-            document.getElementById("remainingDisplay").textContent =
-                "Remaining: " + formatCurrency(remaining);
-
-            updateEcoCheckbox();
-        }
-
-        function drawPieChart() {
-            const canvas = document.getElementById("pieChart");
-            if (!canvas) return;
-            const ctx = canvas.getContext("2d");
-            const width = canvas.width;
-            const height = canvas.height;
-            const centerX = width / 2;
-            const centerY = height / 2;
-            // Accounting for border padding if needed, but simple radius works
-            const radius = Math.min(width, height) / 2 - 2;
-
-            ctx.clearRect(0, 0, width, height);
-
-            if (totalSpent <= 0) {
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.fillStyle = "#e8f5e9";
-                ctx.fill();
-                return;
-            }
-
-            let startAngle = -Math.PI / 2;
-
-            categories.forEach((cat) => {
-                const value = categoryTotals[cat];
-                if (!value) return;
-
-                const sliceAngle = (value / totalSpent) * Math.PI * 2;
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-                ctx.closePath();
-                ctx.fillStyle = categoryColors[cat] || "#ccc";
-                ctx.fill();
-                startAngle += sliceAngle;
-            });
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.fill();
-        }
-
-        function updateCategorySummary() {
-            const container = document.getElementById("categorySummary");
-            container.innerHTML = "";
-            categories.forEach((cat) => {
-                const amount = categoryTotals[cat] || 0;
-                if (amount <= 0) return; // Only show active categories to save space if desired, or keep logic same
-
-                const percent =
-                    totalSpent > 0 && amount > 0
-                        ? " (" + ((amount / totalSpent) * 100).toFixed(1) + "%)"
-                        : "";
-
-                const row = document.createElement("div");
-                row.className = "flex justify-between items-center mb-1.5";
-
-                const left = document.createElement("div");
-                left.className = "flex items-center gap-2";
-
-                // tiny color dot
-                const dot = document.createElement("div");
-                dot.className = "w-2.5 h-2.5 rounded-full";
-                dot.style.backgroundColor = categoryColors[cat] || "#ccc";
-                left.appendChild(dot);
-
-                const name = document.createElement("span");
-                name.className = "font-medium";
-                name.textContent = cat;
-                left.appendChild(name);
-
-                const right = document.createElement("div");
-                right.className = "flex items-center gap-2";
-
-                const val = document.createElement("span");
-                val.className = "opacity-90";
-                val.textContent = formatCurrency(amount) + percent;
-
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.textContent = "Clear";
-                btn.className = "btn-clear-cat text-[11px] px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors";
-                btn.dataset.category = cat;
-
-                right.appendChild(val);
-                right.appendChild(btn);
-
-                row.appendChild(left);
-                row.appendChild(right);
-
-                container.appendChild(row);
-            });
-        }
-
-        function updateCategoryView() {
-            const listDiv = document.getElementById("categoryList");
-            listDiv.innerHTML = "";
-            const wrapper = document.createElement("div");
-            wrapper.className = "space-y-1.5";
-
-            categories.forEach((cat) => {
-                const row = document.createElement("div");
-                row.className = "flex justify-between text-[13px]";
-
-                const nameDiv = document.createElement("div");
-                nameDiv.className = "flex items-center gap-2";
-
-                // Legend bar
-                const bar = document.createElement("div");
-                bar.className = "w-4 h-0.5";
-                bar.style.backgroundColor = "#cfd8dc"; // default from original CSS
-
-                const name = document.createElement("span");
-                name.textContent = cat;
-                nameDiv.appendChild(bar);
-                nameDiv.appendChild(name);
-
-                const amount = categoryTotals[cat] || 0;
-                const percent =
-                    totalSpent > 0 ? ((amount / totalSpent) * 100).toFixed(1) : "0.0";
-
-                const val = document.createElement("div");
-                val.textContent = `${percent}%`;
-
-                row.appendChild(nameDiv);
-                row.appendChild(val);
-                wrapper.appendChild(row);
-            });
-
-            listDiv.appendChild(wrapper);
-            drawPieChart();
-            updateCategorySummary();
-        }
-
-        function updateEcoCheckbox() {
-            const eco = document.getElementById("ecoCheckbox");
-            const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
-            const pendingAmount = Number(
-                document.getElementById("expenseAmount").value
-            ) || 0;
-
-            if (budgetLimit <= 0) {
-                eco.checked = false;
-                return;
-            }
-
-            const projectedTotal = totalSpent + pendingAmount;
-            eco.checked = projectedTotal <= budgetLimit;
-        }
-
-        async function saveExpense(amount, category, date, notes, isEco) {
-            // UI-only: pretend save succeeded
-            return { ok: true };
-        }
-
-        function updateSettings() {
-            // UI-only: no server persistence. Optionally store locally.
-            try {
-                const income = Number(document.getElementById('incomeInput').value);
-                const limit = Number(document.getElementById('budgetInput').value);
-                localStorage.setItem('budget_income_' + currentMonthIso, String(income));
-                localStorage.setItem('budget_limit_' + currentMonthIso, String(limit));
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        function addGroceryRow(id, item, qty, cost, category, checked) {
-            const tbody = document.getElementById('groceryTableBody');
-            const inputRow = document.getElementById('groceryInputRow');
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-gray-50 border-b border-gray-100';
-            tr.dataset.id = id;
-            tr.dataset.amount = String(cost);
-            tr.dataset.category = category || 'Groceries';
-
-            tr.innerHTML = `\
-                <td class="border border-gray-200 p-2 text-center">\
-                    <input type="checkbox" class="accent-[#0e4f23]" ${checked ? 'checked' : ''}>\
-                </td>\
-                <td class="border border-gray-200 p-2">${item}</td>\
-                <td class="border border-gray-200 p-2 text-center">${qty}</td>\
-                <td class="border border-gray-200 p-2 text-right">₱ ${Number(cost).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>\
-                <td class="border border-gray-200 p-2">${category || 'Groceries'}</td>\
-                <td class="border border-gray-200 p-2 text-center">\
-                    <button type="button" class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>\
-                </td>`;
-
-            tbody.insertBefore(tr, inputRow);
-        }
-
-        function addToTotalsLocal(amount, category) {
-            totalSpent += amount;
-            if (totalSpent < 0) totalSpent = 0;
-
-            if (category && categoryTotals.hasOwnProperty(category)) {
-                categoryTotals[category] += amount;
-                if (categoryTotals[category] < 0) categoryTotals[category] = 0;
-            }
-
-            updateSummary();
-            updateCategoryView();
-        }
-
-        function initHeaderDate() {
-            const todayLabel = document.getElementById("currentDateDisplay");
-            const today = new Date();
-            if (todayLabel) {
-                todayLabel.textContent =
-                    today.toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric"
-                    });
-            }
-
-            const monthSelect = document.getElementById("monthSelect");
-            const months = [
-                "January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
-            ];
-            if (monthSelect) {
-                months.forEach((m, idx) => {
-                    const opt = document.createElement("option");
-                    opt.value = idx + 1;
-                    opt.textContent = m;
-                    if (idx === today.getMonth()) opt.selected = true;
-                    monthSelect.appendChild(opt);
-                });
-            }
-
-            const yearSelect = document.getElementById("yearSelect");
-            const currentYear = today.getFullYear();
-            if (yearSelect) {
-                for (let y = currentYear - 2; y <= currentYear + 5; y++) {
-                    const opt = document.createElement("option");
-                    opt.value = y;
-                    opt.textContent = y;
-                    if (y === currentYear) opt.selected = true;
-                    yearSelect.appendChild(opt);
-                }
-            }
-
-            // update visible combined label if present
-            const monthYearLabel = document.getElementById('monthYearLabel');
-            function refreshMonthYearLabel() {
-                if (!monthYearLabel) return;
-                const mIdx = monthSelect ? (parseInt(monthSelect.value, 10) - 1) : today.getMonth();
-                const yVal = yearSelect ? yearSelect.value : currentYear;
-                const mName = months[mIdx] || months[today.getMonth()];
-                monthYearLabel.textContent = `${mName} ${yVal}`;
-            }
-            if (monthYearLabel) {
-                refreshMonthYearLabel();
-                if (monthSelect) monthSelect.addEventListener('change', refreshMonthYearLabel);
-                if (yearSelect) yearSelect.addEventListener('change', refreshMonthYearLabel);
-
-                // clicking the white box will open the (hidden) select for accessibility
-                const monthPicker = document.getElementById('monthPicker');
-                if (monthPicker && monthSelect) {
-                    monthPicker.addEventListener('click', () => {
-                        monthSelect.focus();
-                    });
-                }
-            }
-        }
-
-        function clearExpenseForm() {
-            document.getElementById("expenseAmount").value = "";
-            document.getElementById("expenseCategory").value = "";
-            document.getElementById("expenseDate").value = "";
-            document.getElementById("expenseNotes").value = "";
-            document.getElementById("ecoCheckbox").checked = false;
-            updateEcoCheckbox();
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            initData();
-            initHeaderDate();
-            updateSummary();
-            updateCategoryView();
-
-            const expenseForm = document.getElementById("expenseForm");
-            expenseForm.addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                const amount = Number(document.getElementById("expenseAmount").value);
-                const category = document.getElementById("expenseCategory").value;
-                const date = document.getElementById("expenseDate").value;
-                const notes = document.getElementById("expenseNotes").value;
-                const isEco = document.getElementById("ecoCheckbox").checked;
-
-                if (!amount || amount <= 0 || !category || !date) {
-                    alert("Please fill in Amount, Category, and Date.");
-                    return;
-                }
-
-                const result = await saveExpense(amount, category, date, notes, isEco);
-                if (result.ok) {
-                    addToTotalsLocal(amount, category);
-                    clearExpenseForm();
-                } else {
-                    alert('Failed to save expense');
-                }
-            });
-
-            document
-                .getElementById("expenseAmount")
-                .addEventListener("input", updateEcoCheckbox);
-
-            document
-                .getElementById("budgetInput")
-                .addEventListener("change", () => {
-                    updateSummary();
-                    updateEcoCheckbox();
-                    updateSettings();
-                });
-
-            const incomeInput = document.getElementById("incomeInput");
-            if (incomeInput) {
-                incomeInput.addEventListener("change", updateSettings);
-            }
-
-            document
-                .getElementById("clearExpenseBtn")
-                .addEventListener("click", () => clearExpenseForm());
-
-            // Grocery list
-            // Grocery list
-            const groceryForm = document.getElementById("groceryForm");
-            groceryForm.addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                const item = document.getElementById("groceryItem").value.trim();
-                const qty = Number(document.getElementById("groceryQty").value) || 1;
-                const cost = Number(document.getElementById("groceryCost").value);
-                const budgetCat = document.getElementById("groceryBudgetCat").value;
-
-                if (!item || !cost) {
-                    alert("Please provide an item name and estimated cost.");
-                    return;
-                }
-
-                // Get month from URL or default
-                const urlParams = new URLSearchParams(window.location.search);
-                const monthIso = urlParams.get('month') || new Date().toISOString().slice(0, 7);
-
-                // UI-only: add row locally without server
-                const id = 'local-' + Date.now();
-                addGroceryRow(id, item, qty, cost, budgetCat || 'Groceries', true);
-                addToTotalsLocal(cost, budgetCat || 'Groceries');
-                groceryForm.reset();
-            });
-
-            // Remove and Checkbox in grocery table (event delegation)
-            document
-                .getElementById("groceryTableBody")
-                .addEventListener("click", async (e) => {
-                    const row = e.target.closest("tr");
-                    if (!row) return;
-                    const groceryId = row.dataset.id;
-                    const amount = parseFloat(row.dataset.amount) || 0;
-                    const category = row.dataset.category;
-
-                    if (e.target.classList.contains("btn-remove")) {
-                        // Client-side delete only
-                        if (confirm("Delete this item?")) {
-                            row.remove();
-                            addToTotalsLocal(-amount, category);
-                        }
-                    } else if (e.target.type === "checkbox") {
-                        // Client-side toggle only: no server update
-                        // Optionally update UI or local storage here
-                    }
-                });
-
-            // Clear category buttons in Monthly Budget Summary
-            document
-                .getElementById("categorySummary")
-                .addEventListener("click", (e) => {
-                    if (!e.target.classList.contains("btn-clear-cat")) return;
-
-                    const cat = e.target.dataset.category;
-                    if (!cat || !categoryTotals.hasOwnProperty(cat)) return;
-
-                    const amount = categoryTotals[cat] || 0;
-                    if (amount > 0) {
-                        addToTotalsLocal(-amount, cat);
-                    }
-                });
+    function updateCategorySummary() {
+      const container = document.getElementById("categorySummary");
+      if (!container) return;
+      container.innerHTML = "";
+
+      categories.forEach(cat => {
+        const amount = CATEGORY_TOTALS[cat] || 0;
+        if (amount <= 0) return;
+
+        const percent = TOTAL_SPENT > 0 ? " (" + ((amount / TOTAL_SPENT) * 100).toFixed(1) + "%)" : "";
+
+        const row = document.createElement("div");
+        row.className = "flex justify-between items-center mb-1.5";
+
+        const left = document.createElement("div");
+        left.className = "flex items-center gap-2";
+
+        const dot = document.createElement("div");
+        dot.className = "w-2.5 h-2.5 rounded-full";
+        dot.style.backgroundColor = categoryColors[cat] || "#ccc";
+
+        const name = document.createElement("span");
+        name.className = "font-medium";
+        name.textContent = cat;
+
+        left.appendChild(dot);
+        left.appendChild(name);
+
+        const right = document.createElement("div");
+        right.className = "flex items-center gap-2";
+
+        const val = document.createElement("span");
+        val.className = "opacity-90";
+        val.textContent = formatCurrency(amount) + percent;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Clear";
+        btn.className = "btn-clear-cat text-[11px] px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors";
+        btn.dataset.category = cat;
+
+        right.appendChild(val);
+        right.appendChild(btn);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        container.appendChild(row);
+      });
+    }
+
+    function updateCategoryView() {
+      const listDiv = document.getElementById("categoryList");
+      if (!listDiv) return;
+
+      listDiv.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.className = "space-y-1.5";
+
+      categories.forEach(cat => {
+        const row = document.createElement("div");
+        row.className = "flex justify-between text-[13px]";
+
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "flex items-center gap-2";
+
+        const bar = document.createElement("div");
+        bar.className = "w-4 h-0.5";
+        bar.style.backgroundColor = "#cfd8dc";
+
+        const name = document.createElement("span");
+        name.textContent = cat;
+
+        nameDiv.appendChild(bar);
+        nameDiv.appendChild(name);
+
+        const amount = CATEGORY_TOTALS[cat] || 0;
+        const percent = TOTAL_SPENT > 0 ? ((amount / TOTAL_SPENT) * 100).toFixed(1) : "0.0";
+
+        const val = document.createElement("div");
+        val.textContent = `${percent}%`;
+
+        row.appendChild(nameDiv);
+        row.appendChild(val);
+        wrapper.appendChild(row);
+      });
+
+      listDiv.appendChild(wrapper);
+      drawPieChart();
+      updateCategorySummary();
+    }
+
+    function updateSummaryUI() {
+      const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
+
+      document.getElementById("totalSpentDisplay").textContent = formatCurrency(TOTAL_SPENT);
+
+      let percent = 0;
+      if (budgetLimit > 0) percent = (TOTAL_SPENT / budgetLimit) * 100;
+
+      document.getElementById("budgetUsedLabel").textContent = `${percent.toFixed(1)}% Budget Used`;
+
+      const remaining = budgetLimit - TOTAL_SPENT;
+      document.getElementById("remainingDisplay").textContent = "Remaining: " + formatCurrency(remaining);
+
+      updateEcoCheckbox();
+      updateCategoryView();
+    }
+
+    // ---- Groceries rendering ----
+    function clearGroceriesRenderedRows() {
+      const tbody = document.getElementById("groceryTableBody");
+      const inputRow = document.getElementById("groceryInputRow");
+      if (!tbody || !inputRow) return;
+
+      [...tbody.querySelectorAll("tr")].forEach(tr => {
+        if (tr !== inputRow) tr.remove();
+      });
+    }
+
+    function addGroceryRow(id, item, qty, cost, category, checked) {
+      const tbody = document.getElementById("groceryTableBody");
+      const inputRow = document.getElementById("groceryInputRow");
+      if (!tbody || !inputRow) return;
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-gray-50 border-b border-gray-100";
+      tr.dataset.id = id;
+
+      tr.innerHTML = `\
+        <td class="border border-gray-200 p-2 text-center">\
+          <input type="checkbox" class="grocery-check accent-[#0e4f23]" ${checked ? "checked" : ""}>\
+        </td>\
+        <td class="border border-gray-200 p-2">${escapeHtml(item)}</td>\
+        <td class="border border-gray-200 p-2 text-center">${Number(qty) || 1}</td>\
+        <td class="border border-gray-200 p-2 text-right">₱ ${Number(cost).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>\
+        <td class="border border-gray-200 p-2">${escapeHtml(category || "Groceries")}</td>\
+        <td class="border border-gray-200 p-2 text-center">\
+          <button type="button" class="btn-remove text-[11px] px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-colors">Remove</button>\
+        </td>`;
+
+      tbody.insertBefore(tr, inputRow);
+    }
+
+    function renderGroceriesTable(monthData) {
+      clearGroceriesRenderedRows();
+      for (const g of (monthData.groceries || [])) {
+        addGroceryRow(g.id, g.item, g.qty, g.cost, g.category, !!g.checked);
+      }
+    }
+
+    // ---- Persistence actions ----
+    function saveSettingsForMonth() {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+
+      const income = Number(document.getElementById("incomeInput").value) || 0;
+      const limit = Number(document.getElementById("budgetInput").value) || 0;
+
+      monthData.settings.income = income;
+      monthData.settings.budget_limit = limit;
+
+      saveStore(store);
+    }
+
+    function saveExpenseForMonth(exp) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+      monthData.expenses.push(exp);
+      saveStore(store);
+    }
+
+    function saveGroceryForMonth(g) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+      monthData.groceries.push(g);
+      saveStore(store);
+    }
+
+    function hardDeleteGroceryById(groceryId) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+      monthData.groceries = (monthData.groceries || []).filter(x => x.id !== groceryId);
+      saveStore(store);
+    }
+
+    function setGroceryChecked(groceryId, checked) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+      const target = (monthData.groceries || []).find(x => x.id === groceryId);
+      if (target) target.checked = !!checked;
+      saveStore(store);
+    }
+
+    function hardDeleteCategory(cat) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+
+      monthData.expenses = (monthData.expenses || []).filter(e => e.category !== cat);
+      monthData.groceries = (monthData.groceries || []).filter(g => (g.category || "Groceries") !== cat);
+
+      saveStore(store);
+    }
+
+    // ---- Draft persistence ----
+    function saveDraftExpense() {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+
+      monthData.drafts.expense = {
+        amount: document.getElementById("expenseAmount").value,
+        category: document.getElementById("expenseCategory").value,
+        date: document.getElementById("expenseDate").value,
+        notes: document.getElementById("expenseNotes").value
+      };
+
+      saveStore(store);
+    }
+
+    function saveDraftGrocery() {
+      const store = loadStore();
+      const monthData = ensureMonth(store, ACTIVE_MONTH);
+
+      monthData.drafts.grocery = {
+        item: document.getElementById("groceryItem").value,
+        qty: document.getElementById("groceryQty").value,
+        cost: document.getElementById("groceryCost").value,
+        category: document.getElementById("groceryBudgetCat").value
+      };
+
+      saveStore(store);
+    }
+
+    function applyDrafts(monthData) {
+      const dExp = monthData.drafts?.expense || {};
+      const amt = document.getElementById("expenseAmount");
+      const cat = document.getElementById("expenseCategory");
+      const dat = document.getElementById("expenseDate");
+      const not = document.getElementById("expenseNotes");
+
+      if (amt && dExp.amount !== undefined) amt.value = dExp.amount;
+      if (cat && dExp.category !== undefined) cat.value = dExp.category;
+      if (dat && dExp.date !== undefined) dat.value = dExp.date;
+      if (not && dExp.notes !== undefined) not.value = dExp.notes;
+
+      const dGro = monthData.drafts?.grocery || {};
+      const gi = document.getElementById("groceryItem");
+      const gq = document.getElementById("groceryQty");
+      const gc = document.getElementById("groceryCost");
+      const gb = document.getElementById("groceryBudgetCat");
+
+      if (gi && dGro.item !== undefined) gi.value = dGro.item;
+      if (gq && dGro.qty !== undefined) gq.value = dGro.qty;
+      if (gc && dGro.cost !== undefined) gc.value = dGro.cost;
+      if (gb && dGro.category !== undefined) gb.value = dGro.category;
+
+      updateEcoCheckbox();
+    }
+
+    function clearExpenseForm(hardClearDraft = true) {
+      document.getElementById("expenseAmount").value = "";
+      document.getElementById("expenseCategory").value = "";
+      document.getElementById("expenseDate").value = "";
+      document.getElementById("expenseNotes").value = "";
+      document.getElementById("ecoCheckbox").checked = false;
+
+      if (hardClearDraft) {
+        const store = loadStore();
+        const monthData = ensureMonth(store, ACTIVE_MONTH);
+        monthData.drafts.expense = { amount: "", category: "", date: "", notes: "" };
+        saveStore(store);
+      }
+
+      updateEcoCheckbox();
+    }
+
+    // ---- Navbar month/year integration ----
+    function initHeaderDateOnly() {
+      const todayLabel = document.getElementById("currentDateDisplay");
+      const today = new Date();
+      if (todayLabel) {
+        todayLabel.textContent = today.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "long",
+          day: "numeric"
         });
-    </script>
+      }
+
+      const monthSelect = document.getElementById("monthSelect");
+      const yearSelect = document.getElementById("yearSelect");
+
+      const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      if (monthSelect && monthSelect.options.length === 0) {
+        months.forEach((m, idx) => {
+          const opt = document.createElement("option");
+          opt.value = String(idx + 1);
+          opt.textContent = m;
+          monthSelect.appendChild(opt);
+        });
+      }
+
+      if (yearSelect && yearSelect.options.length === 0) {
+        const currentYear = today.getFullYear();
+        for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+          const opt = document.createElement("option");
+          opt.value = String(y);
+          opt.textContent = String(y);
+          yearSelect.appendChild(opt);
+        }
+      }
+    }
+
+    function syncNavbarMonthUI() {
+      const monthSelect = document.getElementById("monthSelect");
+      const yearSelect = document.getElementById("yearSelect");
+      const monthYearLabel = document.getElementById("monthYearLabel");
+
+      const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      if (!ACTIVE_MONTH) return;
+
+      const [yyyy, mm] = ACTIVE_MONTH.split("-");
+      const mIndex = parseInt(mm, 10) - 1;
+
+      if (monthSelect) monthSelect.value = String(mIndex + 1);
+      if (yearSelect) yearSelect.value = String(yyyy);
+
+      if (monthYearLabel) {
+        const mName = months[mIndex] || months[new Date().getMonth()];
+        monthYearLabel.textContent = `${mName} ${yyyy}`;
+      }
+
+      function onMonthYearChange() {
+        const m = monthSelect ? parseInt(monthSelect.value, 10) : (new Date().getMonth() + 1);
+        const y = yearSelect ? parseInt(yearSelect.value, 10) : new Date().getFullYear();
+        const mm2 = String(m).padStart(2, "0");
+        const newMonthIso = `${y}-${mm2}`;
+
+        const store = loadStore();
+        store.ui.selectedMonth = newMonthIso;
+        saveStore(store);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("month", newMonthIso);
+        window.location.href = url.toString();
+      }
+
+      if (monthSelect) monthSelect.addEventListener("change", onMonthYearChange);
+      if (yearSelect) yearSelect.addEventListener("change", onMonthYearChange);
+
+      // If you have a clickable monthPicker box in navbar
+      const monthPicker = document.getElementById("monthPicker");
+      if (monthPicker && monthSelect) {
+        monthPicker.addEventListener("click", () => monthSelect.focus());
+      }
+    }
+
+    // ---- Month load to UI ----
+    function loadMonthToUI(monthIso) {
+      const store = loadStore();
+      const monthData = ensureMonth(store, monthIso);
+
+      // Settings -> inputs
+      const incomeInput = document.getElementById("incomeInput");
+      const budgetInput = document.getElementById("budgetInput");
+      if (incomeInput) incomeInput.value = monthData.settings.income ?? 160000;
+      if (budgetInput) budgetInput.value = monthData.settings.budget_limit ?? 160000;
+
+      // Groceries table
+      renderGroceriesTable(monthData);
+
+      // Totals
+      const { totalSpent, categoryTotals } = computeTotals(monthData);
+      TOTAL_SPENT = totalSpent;
+      CATEGORY_TOTALS = categoryTotals;
+
+      // Drafts (retain input values when coming back)
+      applyDrafts(monthData);
+
+      saveStore(store);
+      updateSummaryUI();
+    }
+
+    // ---- DOM Ready ----
+    document.addEventListener("DOMContentLoaded", () => {
+      ACTIVE_MONTH = getActiveMonthIso();
+
+      initHeaderDateOnly();
+      syncNavbarMonthUI();
+
+      loadMonthToUI(ACTIVE_MONTH);
+
+      // Save settings
+      const budgetInput = document.getElementById("budgetInput");
+      const incomeInput = document.getElementById("incomeInput");
+
+      if (budgetInput) {
+        budgetInput.addEventListener("change", () => {
+          saveSettingsForMonth();
+          loadMonthToUI(ACTIVE_MONTH);
+        });
+      }
+
+      if (incomeInput) {
+        incomeInput.addEventListener("change", () => {
+          saveSettingsForMonth();
+        });
+      }
+
+      // Draft listeners
+      ["expenseAmount", "expenseCategory", "expenseDate", "expenseNotes"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", saveDraftExpense);
+        if (el && id !== "expenseNotes") el.addEventListener("change", saveDraftExpense);
+      });
+
+      ["groceryItem", "groceryQty", "groceryCost", "groceryBudgetCat"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", saveDraftGrocery);
+        if (el) el.addEventListener("change", saveDraftGrocery);
+      });
+
+      // Eco checkbox updates
+      const expenseAmount = document.getElementById("expenseAmount");
+      if (expenseAmount) expenseAmount.addEventListener("input", updateEcoCheckbox);
+
+      // Add expense
+      const expenseForm = document.getElementById("expenseForm");
+      if (expenseForm) {
+        expenseForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+
+          const amount = Number(document.getElementById("expenseAmount").value);
+          const category = document.getElementById("expenseCategory").value;
+          const date = document.getElementById("expenseDate").value;
+          const notes = document.getElementById("expenseNotes").value;
+          const isEco = document.getElementById("ecoCheckbox").checked;
+
+          if (!amount || amount <= 0 || !category || !date) {
+            alert("Please fill in Amount, Category, and Date.");
+            return;
+          }
+
+          const exp = {
+            id: uuid(),
+            amount,
+            category,
+            date,
+            notes,
+            isEco,
+            createdAt: nowIso()
+          };
+
+          saveExpenseForMonth(exp);
+          clearExpenseForm(true);
+          loadMonthToUI(ACTIVE_MONTH);
+        });
+      }
+
+      // Cancel expense (clears draft too)
+      const clearExpenseBtn = document.getElementById("clearExpenseBtn");
+      if (clearExpenseBtn) {
+        clearExpenseBtn.addEventListener("click", () => clearExpenseForm(true));
+      }
+
+      // Add grocery
+      const groceryForm = document.getElementById("groceryForm");
+      if (groceryForm) {
+        groceryForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+
+          const item = document.getElementById("groceryItem").value.trim();
+          const qty = Number(document.getElementById("groceryQty").value) || 1;
+          const cost = Number(document.getElementById("groceryCost").value);
+          const category = document.getElementById("groceryBudgetCat").value || "Groceries";
+
+          if (!item || !cost) {
+            alert("Please provide an item name and estimated cost.");
+            return;
+          }
+
+          const g = {
+            id: uuid(),
+            item,
+            qty,
+            cost,
+            category,
+            checked: true,
+            createdAt: nowIso()
+          };
+
+          saveGroceryForMonth(g);
+
+          // Clear grocery draft + form
+          const store = loadStore();
+          const monthData = ensureMonth(store, ACTIVE_MONTH);
+          monthData.drafts.grocery = { item: "", qty: "1", cost: "", category: "" };
+          saveStore(store);
+
+          groceryForm.reset();
+          loadMonthToUI(ACTIVE_MONTH);
+        });
+      }
+
+      // Grocery table actions
+      const groceryTableBody = document.getElementById("groceryTableBody");
+      if (groceryTableBody) {
+        groceryTableBody.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          if (!row || !row.dataset.id) return;
+
+          const groceryId = row.dataset.id;
+
+          if (e.target.classList.contains("btn-remove")) {
+            if (confirm("Delete this item?")) {
+              hardDeleteGroceryById(groceryId);
+              loadMonthToUI(ACTIVE_MONTH);
+            }
+          }
+        });
+
+        groceryTableBody.addEventListener("change", (e) => {
+          const row = e.target.closest("tr");
+          if (!row || !row.dataset.id) return;
+
+          if (e.target.classList.contains("grocery-check")) {
+            setGroceryChecked(row.dataset.id, e.target.checked);
+          }
+        });
+      }
+
+      // Category clear (hard delete all items in that category for this month)
+      const categorySummary = document.getElementById("categorySummary");
+      if (categorySummary) {
+        categorySummary.addEventListener("click", (e) => {
+          if (!e.target.classList.contains("btn-clear-cat")) return;
+
+          const cat = e.target.dataset.category;
+          if (!cat) return;
+
+          if (confirm(`Clear ALL "${cat}" entries for ${ACTIVE_MONTH}?`)) {
+            hardDeleteCategory(cat);
+            loadMonthToUI(ACTIVE_MONTH);
+          }
+        });
+      }
+    });
+  </script>
+
 </body>
 
 </html>

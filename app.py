@@ -13,6 +13,26 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = os.environ.get('MOMCARE_SECRET', 'change-this-secret-for-production')
 
+DB_PATH = Path(__file__).parent / 'users.db'
+
+def get_db() -> Connection:
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute('PRAGMA journal_mode=WAL;')
+        conn.execute('PRAGMA synchronous=NORMAL;')
+        conn.execute('PRAGMA foreign_keys=ON;')
+    except Exception:
+        pass
+    return conn
+
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+    # ... your CREATE TABLE statements ...
+    conn.commit()
+    conn.close()
+    
 # Ensure DB schema exists on startup
 try:
     init_db()
@@ -1238,4 +1258,10 @@ def edit_profile(user_id):
 
 
 if __name__ == '__main__':
-   app.run(debug=True)
+    try:
+        init_db()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+    app.run(debug=True)
