@@ -726,16 +726,6 @@ def api_create_task():
    conn = get_db()
    cur = conn.cursor()
    # server-side overlap validation when start_time and duration provided
-   try:
-       if start_time is not None and duration is not None:
-           new_start = float(start_time)
-           new_end = new_start + float(duration)
-           cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, task_date, new_end, new_start))
-           if cur.fetchone():
-               conn.close()
-               return jsonify({'error': 'overlap'}), 400
-   except Exception:
-       pass
 
 
    cur.execute(
@@ -785,28 +775,20 @@ def api_update_task(task_id):
 
 
    # Only validate overlap when scheduling fields are being changed by the client
-   if any(k in data for k in ('start_time', 'duration', 'task_date')):
-       try:
-           if prop_start is not None and prop_duration is not None:
-               ns = float(prop_start)
-               ne = ns + float(prop_duration)
-               cur.execute('SELECT id FROM tasks WHERE user_email = ? AND task_date = ? AND id != ? AND start_time IS NOT NULL AND duration IS NOT NULL AND (start_time < ? AND (start_time + duration) > ?)', (user_email, prop_date, task_id, ne, ns))
-               if cur.fetchone():
-                   conn.close()
-                   return jsonify({'error': 'overlap'}), 400
-       except Exception:
-           pass
 
-
-   cur.execute('UPDATE tasks SET title = COALESCE(?, title), start_time = COALESCE(?, start_time), duration = COALESCE(?, duration), color = COALESCE(?, color), is_priority = ?, task_date = COALESCE(?, task_date), completed = ? WHERE id = ? AND user_email = ?',
-               (title, start_time, duration, color, is_priority, task_date, completed, task_id, user_email))
-   conn.commit()
+   # Execute update
+   try:
+      cur.execute(
+         'UPDATE tasks SET title = COALESCE(?, title), start_time = COALESCE(?, start_time), duration = COALESCE(?, duration), color = COALESCE(?, color), is_priority = COALESCE(?, is_priority), task_date = COALESCE(?, task_date), completed = COALESCE(?, completed) WHERE id = ? AND user_email = ?',
+         (title, start_time, duration, color, is_priority, task_date, completed, task_id, user_email)
+      )
+      conn.commit()
+   except Exception as e:
+      conn.close()
+      return jsonify({'error': 'update failed'}), 500
+   
    conn.close()
    return jsonify({'ok': True})
-
-
-
-
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
 def api_delete_task(task_id):
    user_email = session.get('user_email')
