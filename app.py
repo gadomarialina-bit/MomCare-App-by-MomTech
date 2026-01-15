@@ -1287,6 +1287,82 @@ def edit_profile(user_id):
     return render_template('edit.html', user=user, first=first, today=today)
 
 
+@app.route('/api/budget', methods=['GET'])
+def api_budget_get():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    month_iso = month_iso_or_current()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT income, budget_limit
+        FROM monthly_budgets
+        WHERE user_email = ? AND month_iso = ?
+    """, (user_email, month_iso))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'month_iso': month_iso, 'income': 0, 'budget_limit': 0})
+
+    return jsonify({
+        'month_iso': month_iso,
+        'income': row['income'] or 0,
+        'budget_limit': row['budget_limit'] or 0
+    })
+
+@app.route('/api/budget', methods=['PUT'])
+def api_budget_save():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    data = request.get_json() or {}
+    month_iso = data.get('month_iso') or month_iso_or_current()
+    income = float(data.get('income') or 0)
+    budget_limit = float(data.get('budget_limit') or 0)
+    now = datetime.utcnow().isoformat()
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO monthly_budgets (user_email, month_iso, income, budget_limit, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_email, month_iso)
+            DO UPDATE SET income = excluded.income,
+                         budget_limit = excluded.budget_limit
+        """, (user_email, month_iso, income, budget_limit, now))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'Unable to save budget'}), 500
+
+    conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/budget', methods=['DELETE'])
+def api_budget_delete():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    month_iso = month_iso_or_current()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM monthly_budgets
+        WHERE user_email = ? AND month_iso = ?
+    """, (user_email, month_iso))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'deleted': True})
 
 
 
