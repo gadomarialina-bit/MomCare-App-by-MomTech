@@ -33,6 +33,20 @@ def get_db() -> Connection:
    return conn
 
 
+def month_iso_or_current() -> str:
+    """
+    Returns selected month in YYYY-MM.
+    If ?month=YYYY-MM is missing/invalid, returns current month.
+    """
+    m = request.args.get('month')
+    try:
+        if m:
+            datetime.strptime(m, '%Y-%m')
+            return m
+    except Exception:
+        pass
+    return datetime.now().strftime('%Y-%m')
+
 
 
 def init_db():
