@@ -1007,7 +1007,7 @@ def budgetexpenses():
        selected_month_iso = datetime.now().strftime('%Y-%m')
        selected_month = datetime.now().strftime('%B %Y')
       
-   # Budget & expense backend disabled — present UI only with placeholder data.
+   # Budget & expense backend disabled with placeholder data.
    budget_data = {'income': 0, 'budget_limit': 0}
    expenses = []
    groceries = []
@@ -1364,6 +1364,152 @@ def api_budget_delete():
 
     return jsonify({'deleted': True})
 
+
+@app.route('/api/expenses', methods=['GET'])
+def api_expenses_get():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    month_iso = month_iso_or_current()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, category, description, color, amount, expense_date
+        FROM expenses
+        WHERE user_email = ? AND month_iso = ?
+        ORDER BY id DESC
+    """, (user_email, month_iso))
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify({'month_iso': month_iso, 'expenses': [dict(r) for r in rows]})
+
+
+@app.route('/api/expenses', methods=['POST'])
+def api_expenses_add():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    data = request.get_json() or {}
+    month_iso = data.get('month_iso') or month_iso_or_current()
+
+    category = (data.get('category') or '').strip()
+    description = (data.get('description') or '').strip()
+    color = data.get('color')
+    amount = float(data.get('amount') or 0)
+    expense_date = data.get('expense_date')
+    now = datetime.utcnow().isoformat()
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO expenses (user_email, month_iso, category, description, color, amount, expense_date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_email, month_iso, category, description, color, amount, expense_date, now))
+        conn.commit()
+        new_id = cur.lastrowid
+    except Exception:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'Unable to create expense'}), 500
+
+    conn.close()
+    return jsonify({'id': new_id}), 201
+
+@app.route('/api/expenses/<int:expense_id>', methods=['DELETE'])
+def api_expenses_delete(expense_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM expenses
+        WHERE id = ? AND user_email = ?
+    """, (expense_id, user_email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'deleted': True})
+
+@app.route('/api/groceries', methods=['GET'])
+def api_groceries_get():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    month_iso = month_iso_or_current()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, item_name, quantity, estimated_cost, category, is_checked
+        FROM grocery_items
+        WHERE user_email = ? AND month_iso = ?
+        ORDER BY id DESC
+    """, (user_email, month_iso))
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify({'month_iso': month_iso, 'groceries': [dict(r) for r in rows]})
+
+@app.route('/api/groceries', methods=['POST'])
+def api_groceries_add():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    data = request.get_json() or {}
+    month_iso = data.get('month_iso') or month_iso_or_current()
+
+    item_name = (data.get('item_name') or '').strip()
+    quantity = int(data.get('quantity') or 1)
+    estimated_cost = float(data.get('estimated_cost') or 0)
+    category = (data.get('category') or '').strip()
+    is_checked = 1 if data.get('is_checked') else 0
+    now = datetime.utcnow().isoformat()
+
+    if not item_name:
+        return jsonify({'error': 'item_name required'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO grocery_items (user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_email, item_name, quantity, estimated_cost, category, is_checked, month_iso, now))
+        conn.commit()
+        new_id = cur.lastrowid
+    except Exception:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'Unable to create grocery item'}), 500
+
+    conn.close()
+    return jsonify({'id': new_id}), 201
+
+@app.route('/api/groceries/<int:item_id>', methods=['DELETE'])
+def api_groceries_delete(item_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM grocery_items
+        WHERE id = ? AND user_email = ?
+    """, (item_id, user_email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'deleted': True})
 
 
 if __name__ == '__main__':
