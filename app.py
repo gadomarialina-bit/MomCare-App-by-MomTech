@@ -113,7 +113,7 @@ def init_db():
    )
 
 
-   # Create expenses table
+   # Create tasks table
    cur.execute(
        """
        CREATE TABLE IF NOT EXISTS tasks (
@@ -131,6 +131,22 @@ def init_db():
        """
    )
 
+ # Create expenses table
+   cur.execute(
+       """
+       CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            month_iso TEXT NOT NULL,
+            category TEXT,
+            description TEXT,
+            color TEXT,
+            amount REAL NOT NULL DEFAULT 0,
+            expense_date TEXT,
+            created_at TEXT
+       )
+       """
+   )
 
    # Create grocery_items table
    cur.execute(
