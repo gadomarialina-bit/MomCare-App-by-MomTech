@@ -92,11 +92,15 @@
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
                 <div class="space-y-4">
-                    <p>Mood Today:</p>
-                    <p>Stress Level:</p>
-                    <p>Wellness:</p>
+                    <p>Mood Today: <span class="font-bold text-[#5a8d26]">{{ mood_data.mood if mood_data else 'Neutral'
+                            }}</span></p>
+                    <p>Stress Level: <span class="font-bold text-[#5a8d26]">{{ mood_data.stress if mood_data else '5'
+                            }}/10</span></p>
+                    <p class="font-bold text-[#104b0b]">Wellness Tip for the Day:</p>
+                    <p class="italic text-sm text-gray-600 mt-1">"{{ mood_data.wellness_tip if mood_data else 'Take a
+                        moment to breathe.' }}"</p>
                 </div>
-                <a href="#" class="block w-full md:w-auto mx-auto mt-6">
+                <a href="{{ url_for('mood') }}" class="block w-full md:w-auto mx-auto mt-6">
                     <button
                         class="w-full md:w-auto px-8 py-3 bg-[#5a8d26] text-white text-base rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
                         Log Mood
@@ -117,7 +121,7 @@
         class="w-[85%] mx-auto bg-white mt-4 mb-12 p-10 rounded-xl shadow-sm flex flex-col md:flex-row justify-between text-xl gap-4 md:gap-0 md:w-[85%]">
         <span>Task: 3 Pending</span>
         <span>Budget: ______ remaining</span>
-        <span>Mood: </span>
+        <span>Mood: {{ mood_data.mood if mood_data else 'Neutral' }}</span>
     </div>
 
 </body>

@@ -17,7 +17,7 @@
     </style>
 </head>
 
-<body class="bg-[#d1e9f0] text-[#23423c] font-sans m-0 p-0">
+<body class="bg-[#a5dbe5] text-[#104b0b] font-['Poppins'] m-0 p-0">
 
     {% include 'navbar.html' %}
 
@@ -28,10 +28,9 @@
             <!-- Left Column -->
             <div class="flex flex-col gap-6">
 
-                <!-- Mood Selector Card -->
-                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
-                    <div class="bg-[#1f4f1e] text-white text-center py-4 rounded-t-3xl">
-                        <h5 class="text-lg font-semibold m-0">How are you feeling today, Mom?</h5>
+                <div class="bg-white rounded-3xl shadow-md overflow-hidden border border-white/20">
+                    <div class="bg-[#5a8d26] text-white text-center py-4">
+                        <h5 class="text-lg font-semibold m-0">How are you feeling today, {{ first }}?</h5>
                     </div>
                     <div class="p-6">
                         <form id="moodForm" action="/update_mood" method="POST">
@@ -40,7 +39,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Happy')">
                                     <div
-                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#5cb85c] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#5cb85c] mb-2 mx-auto">
                                         <i class="far fa-smile"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Happy</p>
@@ -48,7 +47,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Neutral')">
                                     <div
-                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#5bc0de] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#5bc0de] mb-2 mx-auto">
                                         <i class="far fa-meh"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Neutral</p>
@@ -56,7 +55,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Tired')">
                                     <div
-                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#d9534f] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#d9534f] mb-2 mx-auto">
                                         <i class="far fa-frown"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Tired</p>
@@ -64,7 +63,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Stressed')">
                                     <div
-                                        class="w-[65px] h-[65px] border-2 border-gray-200 rounded-full flex items-center justify-center text-4xl text-[#333] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#333] mb-2 mx-auto">
                                         <i class="far fa-tired"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Stressed</p>
@@ -78,51 +77,58 @@
                 <!-- Metrics Row -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Rest & Sleep -->
-                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
-                        <div class="font-bold text-sm flex items-center mb-2">
+                    <div class="bg-white text-[#104b0b] p-5 rounded-2xl flex flex-col justify-between min-h-[150px] cursor-pointer shadow-md border-t-4 border-[#5a8d26] transition-all hover:translate-y-[-2px]"
+                        onclick="editMetric('sleep')">
+                        <div class="font-bold text-sm flex items-center mb-2 text-[#5a8d26]">
                             <i class="fas fa-moon mr-2"></i>Rest & Sleep
                         </div>
-                        <div class="text-2xl font-extrabold my-2">{{ data.sleep if data and data.sleep else '7.5' }}
-                            hours</div>
-                        <div class="text-[0.7rem] leading-tight">You slept 7-8 hrs for 4 days this week</div>
+                        <div class="text-3xl font-extrabold my-2" id="sleepVal">{{ data.sleep if data and data.sleep
+                            else '7.5' }} <span class="text-sm font-normal">hours</span></div>
+                        <div class="text-[0.7rem] leading-tight text-gray-500" id="sleepTip">Click to update sleep hours
+                        </div>
                     </div>
 
                     <!-- Hydration -->
-                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
-                        <div class="font-bold text-sm flex items-center mb-2">
+                    <div class="bg-white text-[#104b0b] p-5 rounded-2xl flex flex-col justify-between min-h-[150px] cursor-pointer shadow-md border-t-4 border-[#5a8d26] transition-all hover:translate-y-[-2px]"
+                        onclick="editMetric('water')">
+                        <div class="font-bold text-sm flex items-center mb-2 text-[#5a8d26]">
                             <i class="fas fa-tint mr-2"></i>Hydration
                         </div>
-                        <div class="text-2xl font-extrabold my-2">{{ data.water if data and data.water else '6' }}/8
-                            glasses</div>
-                        <div class="text-[0.7rem] leading-tight">Water Today:</div>
+                        <div class="text-3xl font-extrabold my-2" id="waterVal">{{ data.water if data and data.water
+                            else '0' }} <span class="text-sm font-normal">/8 glasses</span></div>
+                        <div class="text-[0.7rem] leading-tight text-gray-500" id="waterTip">Click to update water
+                            intake</div>
                     </div>
 
                     <!-- Physical Wellbeing -->
-                    <div class="bg-[#90b17b] text-[#2d5a27] p-4 rounded-xl flex flex-col justify-between min-h-[140px]">
-                        <div class="font-bold text-sm flex items-center mb-2">
+                    <div class="bg-white text-[#104b0b] p-5 rounded-2xl flex flex-col justify-between min-h-[150px] cursor-pointer shadow-md border-t-4 border-[#5a8d26] transition-all hover:translate-y-[-2px]"
+                        onclick="updateActivitySuggestion()">
+                        <div class="font-bold text-sm flex items-center mb-2 text-[#5a8d26]">
                             <i class="fas fa-running mr-2"></i>Physical Wellbeing
                         </div>
-                        <div class="text-xl font-extrabold my-2 leading-tight">{{ data.activity if data and
+                        <div class="text-xl font-extrabold my-2 leading-tight" id="activityVal">{{
+                            data.activity if data and
                             data.activity else 'Light Stretching' }}</div>
-                        <div class="text-[0.7rem] leading-tight">Activity today:</div>
+                        <div class="opacity-0 text-[0.7rem] leading-tight">placeholder</div>
                     </div>
                 </div>
 
-                <!-- Emotional & Mental Wellness -->
-                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
-                    <div class="bg-[#1f4f1e] text-white py-3 rounded-t-3xl text-center">
+                <div class="bg-white rounded-3xl shadow-md overflow-hidden border border-white/20">
+                    <div class="bg-[#5a8d26] text-white py-3 text-center">
                         <p class="m-0 font-bold">Emotional & Mental Wellness</p>
                     </div>
                     <div class="p-6">
                         <label class="text-xs font-bold block mb-2">Stress Level</label>
-                        <input type="range" min="1" max="10" value="{{ data.stress if data and data.stress else 5 }}"
-                            disabled
-                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed accent-[#5a8254]">
+                        <input type="range" id="stressSlider" min="1" max="10"
+                            value="{{ data.stress if data and data.stress else 5 }}"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#5a8d26]">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>Low</span><span>High</span>
+                            <span>Low</span><span>Neutral</span><span>High</span>
                         </div>
-                        <p class="text-center mt-4 italic text-[#2d5a27] font-medium">"You've been gaining more energy
-                            this week 💛"</p>
+                        <p id="stressMessage" class="text-center mt-4 italic text-[#104b0b] font-medium">"{{ 'You\'re
+                            doing okay. Take a breath. ☕' if (data.stress|int > 3 and data.stress|int < 8) else ('Great
+                                job keeping calm! 🌿' if data.stress|int <=3 else 'It\' s okay to pause and breathe.
+                                💛') }}"</p>
                     </div>
                 </div>
 
@@ -132,8 +138,8 @@
             <div class="flex flex-col gap-6">
 
                 <!-- Weekly Summary -->
-                <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
-                    <div class="bg-[#1f4f1e] text-white py-4 rounded-t-3xl text-center">
+                <div class="bg-white rounded-3xl shadow-md overflow-hidden border border-white/20">
+                    <div class="bg-[#5a8d26] text-white py-4 text-center">
                         <h5 class="text-lg font-semibold m-0">Weekly Summary</h5>
                     </div>
                     <div class="p-6">
@@ -148,11 +154,8 @@
                     </div>
                 </div>
 
-                <!-- Wellness Tip -->
-                <div class="pl-2">
-                    <p class="font-bold text-[#2d5a27] mb-1">Wellness Tip for Today:</p>
-                    <p class="italic text-[#23423c]">"Take a deep breath and stretch for a few minutes."</p>
-                </div>
+                <!-- Wellness tip removed at user request -->
+
 
             </div>
 
@@ -161,49 +164,347 @@
     </main>
 
     <script>
+        let selectedMood = '{{ data.mood if data else "Neutral" }}';
+        let currentWater = {{ data.water if data and data.water else 0 }};
+        let currentSleep = {{ data.sleep if data and data.sleep else 7.5 }};
+        let currentActivity = '{{ data.activity if data else "Light Stretching" }}';
+
+        // Sleep tips based on hours
+        const sleepTipsByHours = {
+            veryLow: ['🚨 Get more sleep tonight!', '⏰ Aim for 7-8 hours', '😴 Your body needs rest', '💤 Sleep deprivation affects health'],
+            low: ['🛏️ Almost there! Get 1-2 more hours', '⏰ Target 7-8 hours for best results', '😴 A bit more sleep helps', '💪 More rest = more energy'],
+            perfect: ['✨ Perfect sleep schedule!', '👏 You\'re well-rested!', '💯 Great job!', '🌟 Keep it up!'],
+            high: ['🏃 You\'re well-rested! Stay active', '⚡ Great energy levels ahead', '🎉 Excellent rest!', '✨ Time to get moving!']
+        };
+
+        function getSleepTip() {
+            const hours = currentSleep;
+            let tips;
+
+            if (hours < 5) {
+                tips = sleepTipsByHours.veryLow;
+            } else if (hours < 7) {
+                tips = sleepTipsByHours.low;
+            } else if (hours <= 9) {
+                tips = sleepTipsByHours.perfect;
+            } else {
+                tips = sleepTipsByHours.high;
+            }
+
+            // Return first tip for stability (deterministic)
+            return tips[0];
+        }
+
+        // Water tips based on glasses
+        const waterTipsByGlasses = {
+            veryLow: ['💧 Drink more water!', '⏰ You need at least 6-8 glasses', '🚨 Dehydration affects health', '💪 Hydrate for energy'],
+            low: ['💧 Keep drinking!', '⏰ Almost at goal! Get 3 more glasses', '🌊 More water needed', '⚡ Hydration boost!'],
+            perfect: ['✨ Perfect hydration!', '👏 Great job staying hydrated!', '💯 You\'re well hydrated!', '🌟 Keep it up!'],
+            high: ['🎉 Excellent hydration!', '💧 You\'re very well hydrated!', '✨ Amazing water intake!', '🏆 Hydration champion!']
+        };
+
+        function getWaterTip() {
+            const glasses = currentWater;
+            let tips;
+
+            if (glasses < 3) {
+                tips = waterTipsByGlasses.veryLow;
+            } else if (glasses < 6) {
+                tips = waterTipsByGlasses.low;
+            } else if (glasses <= 8) {
+                tips = waterTipsByGlasses.perfect;
+            } else {
+                tips = waterTipsByGlasses.high;
+            }
+
+            // Return first tip for stability (deterministic)
+            return tips[0];
+        }
+
+        function updateWaterTip() {
+            const tip = getWaterTip();
+            const tipElement = document.getElementById('waterTip');
+            if (tipElement) {
+                tipElement.textContent = tip;
+            }
+        }
+
+        function updateSleepTip() {
+            const tip = getSleepTip();
+            const tipElement = document.getElementById('sleepTip');
+            if (tipElement) {
+                tipElement.textContent = tip;
+            }
+        }
+
+        // Activity suggestions based on wellness
+        const activitiesByWellness = {
+            low: ['Light Stretching', 'Gentle Walk', 'Breathing Exercises', 'Yoga', 'Tai Chi', 'Meditation', 'Neck Rolls', 'Shoulder Shrugs'],
+            moderate: ['Brisk Walk', 'Dancing', 'Swimming', 'Pilates', 'Hiking', 'Gardening', 'Jump Rope', 'Elliptical', 'Badminton', 'Volleyball'],
+            high: ['Running', 'Weight Training', 'Cycling', 'HIIT Workout', 'Mountain Climbing', 'CrossFit', 'Boxing', 'Tennis', 'Basketball', 'Sprint Training']
+        };
+
+        function getWellnessLevel() {
+            // Calculate overall wellness (0-100)
+            let score = 0;
+
+            // Sleep: 0-25 points
+            if (currentSleep >= 7 && currentSleep <= 9) score += 25;
+            else if (currentSleep >= 5 && currentSleep < 7) score += 15;
+            else if (currentSleep > 9) score += 20;
+
+            // Water: 0-25 points
+            if (currentWater >= 6) score += 25;
+            else if (currentWater >= 3) score += 15;
+
+            // Stress: 0-25 points
+            const stress = parseInt(document.getElementById('stressSlider')?.value || 5);
+            if (stress <= 4) score += 25;
+            else if (stress <= 6) score += 15;
+
+            // Activity: 0-25 points
+            if (currentActivity && currentActivity.toLowerCase() !== 'light stretching') score += 20;
+
+            return score;
+        }
+
+        function getRandomActivitySuggestion() {
+            const wellnessScore = getWellnessLevel();
+            let activities;
+
+            if (wellnessScore >= 70) {
+                activities = activitiesByWellness.high;
+            } else if (wellnessScore >= 40) {
+                activities = activitiesByWellness.moderate;
+            } else {
+                activities = activitiesByWellness.low;
+            }
+
+            // Return random activity from appropriate list
+            return activities[Math.floor(Math.random() * activities.length)];
+        }
+
+        function updateActivitySuggestion() {
+            const suggestedActivity = getRandomActivitySuggestion();
+            document.getElementById('activityVal').textContent = suggestedActivity;
+            currentActivity = suggestedActivity;
+        }
+
         function submitMood(val) {
+            // Visual feedback on selection
+            document.querySelectorAll('[data-mood]').forEach(el => {
+                el.style.opacity = '0.6';
+            });
+
+            const selected = document.querySelector(`[data-mood="${val}"]`);
+            if (selected) {
+                selected.style.opacity = '1';
+            }
+
+            // Connect to stress slider
+            const slider = document.getElementById('stressSlider');
+            if (slider) {
+                const levels = { 'Happy': 2, 'Neutral': 5, 'Tired': 7, 'Stressed': 10 };
+                const newLevel = levels[val] || 5;
+                slider.value = newLevel;
+                // Trigger the input event to update the message and DB (via updateWellness)
+                const event = new Event('input');
+                slider.dispatchEvent(event);
+            }
+
+            selectedMood = val;
             document.getElementById('moodVal').value = val;
-            document.getElementById('moodForm').submit();
+
+            // Allow a small delay for the slider update to trigger before reload
+            setTimeout(() => {
+                document.getElementById('moodForm').submit();
+            }, 300);
+        }
+
+        async function updateWellness(metric, value) {
+            try {
+                const response = await fetch('/update_wellness', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        metric: metric,
+                        value: value
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log(`${metric} updated: ${value}`);
+                }
+            } catch (error) {
+                console.error('Error updating wellness:', error);
+            }
+        }
+
+        function incrementWater() {
+            if (currentWater < 8) {
+                currentWater += 1;
+                document.getElementById('waterVal').textContent = currentWater + '/8 glasses';
+                updateWellness('water', currentWater);
+            }
+        }
+
+        function editMetric(metric) {
+            const prompt_text = metric === 'sleep'
+                ? 'Enter sleep hours (0-24):'
+                : metric === 'water'
+                    ? 'Enter water glasses (0-8):'
+                    : metric === 'activity'
+                        ? 'Enter activity (e.g., "Light Stretching", "Jogging", "Yoga"):'
+                        : 'Edit metric:';
+
+            const current = metric === 'sleep' ? currentSleep : metric === 'water' ? currentWater : currentActivity;
+            const newValue = prompt(prompt_text, current);
+
+            if (newValue !== null && newValue.trim() !== '') {
+                if (metric === 'sleep') {
+                    const hours = parseFloat(newValue);
+                    if (!isNaN(hours) && hours >= 0 && hours <= 24) {
+                        currentSleep = hours;
+                        document.getElementById('sleepVal').textContent = hours + ' hours';
+                        updateSleepTip();
+                        updateWellness('sleep', hours);
+                    } else {
+                        alert('Please enter a valid number between 0 and 24');
+                    }
+                } else if (metric === 'water') {
+                    const glasses = parseFloat(newValue);
+                    if (!isNaN(glasses) && glasses >= 0 && glasses <= 8) {
+                        currentWater = glasses;
+                        document.getElementById('waterVal').textContent = glasses + '/8 glasses';
+                        updateWaterTip();
+                        updateWellness('water', glasses);
+                    } else {
+                        alert('Please enter a valid number between 0 and 8');
+                    }
+                } else if (metric === 'activity') {
+                    currentActivity = newValue;
+                    document.getElementById('activityVal').textContent = newValue;
+                    updateWellness('activity', newValue);
+                }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            // Initialize sleep and water tips
+            updateSleepTip();
+            updateWaterTip();
 
-            // Mock data for weekly mood summary (0=Tired, 1=Stressed, 2=Neutral, 3=Happy)
-            // Just visualization
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Mood Score',
-                        data: [3, 2, 2, 1, 3, 3, 2], // Mock data
-                        backgroundColor: '#90b17b',
-                        borderColor: '#5a8254',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 4,
-                            ticks: {
-                                callback: function (value) {
-                                    const moods = ['', 'Tired', 'Stressed', 'Neutral', 'Happy'];
-                                    return moods[value] || '';
+            // Add data attributes to mood buttons for selection tracking
+            document.querySelectorAll('[onclick*="submitMood"]').forEach(el => {
+                const mood = el.getAttribute('onclick').match(/'([^']+)'/)[1];
+                el.setAttribute('data-mood', mood);
+                if (mood === selectedMood) {
+                    el.style.opacity = '1';
+                } else {
+                    el.style.opacity = '0.6';
+                    el.style.transition = 'opacity 0.3s ease';
+                }
+                el.style.cursor = 'pointer';
+            });
+
+            // Stress slider interactivity
+            const stressSlider = document.getElementById('stressSlider');
+            const stressMessage = document.getElementById('stressMessage');
+
+            // Tips based on stress levels (Low: 1-3, Moderate: 4-7, High: 8-10)
+            const stressTipsData = {
+                low: [
+                    "Great job keeping calm! 🌿",
+                    "Feeling balanced is a superpower. ✨",
+                    "Enjoy this peaceful moment. 🌸",
+                    "You're doing great! Keep smiling. 😊"
+                ],
+                moderate: [
+                    "You're doing okay. Take a breath. ☕",
+                    "Stay steady, you've got this. 💪",
+                    "A short break might help recharge. 🔋",
+                    "Keep going, but don't forget to rest. 🛑"
+                ],
+                high: [
+                    "It's okay to pause and breathe. 💛",
+                    "Be kind to yourself right now. 🛡️",
+                    "One step at a time is enough. 👣",
+                    "Take a deep breath. You are strong. 🌟"
+                ]
+            };
+
+            function getStressTip(level) {
+                let tips;
+                if (level <= 3) {
+                    tips = stressTipsData.low;
+                } else if (level <= 7) {
+                    tips = stressTipsData.moderate;
+                } else {
+                    tips = stressTipsData.high;
+                }
+                // Deterministic tip selection based on level to avoid jitter
+                // Use level as index (modulo length)
+                return tips[(level - 1) % tips.length];
+            }
+
+            if (stressSlider) {
+                stressSlider.addEventListener('input', function () {
+                    const level = parseInt(this.value);
+                    if (stressMessage) {
+                        stressMessage.textContent = `"${getStressTip(level)}"`;
+                    }
+                    updateWellness('stress', level);
+                });
+
+                // Initialize on load
+                if (stressMessage) {
+                    const level = parseInt(stressSlider.value);
+                    stressMessage.textContent = `"${getStressTip(level)}"`;
+                }
+            }
+
+            // Weekly mood chart with real data
+            const ctx = document.getElementById('weeklyChart');
+            if (ctx) {
+                const weekData = JSON.parse('{{ week_data | tojson }}') || [2, 2, 2, 2, 2, 2, 2];
+
+                new Chart(ctx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Mood Score',
+                            data: weekData,
+                            backgroundColor: '#90b17b',
+                            borderColor: '#5a8254',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 3,
+                                ticks: {
+                                    callback: function (value) {
+                                        const moods = ['Stressed', 'Tired', 'Neutral', 'Happy'];
+                                        return moods[value] || '';
+                                    }
                                 }
                             }
+                        },
+                        plugins: {
+                            legend: { display: false }
                         }
-                    },
-                    plugins: {
-                        legend: { display: false }
                     }
-                }
-            });
+                });
+            }
         });
     </script>
 </body>

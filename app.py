@@ -5,7 +5,7 @@ from pathlib import Path
 import sqlite3
 from sqlite3 import Connection
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 
@@ -208,6 +208,36 @@ def init_db():
            updated_at TEXT
        )
        """
+   )
+   # Create daily_moods table to track mood over time
+   cur.execute(
+      """
+      CREATE TABLE IF NOT EXISTS daily_moods (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         user_email TEXT NOT NULL,
+         mood TEXT NOT NULL,
+         mood_score INTEGER NOT NULL,
+         date TEXT NOT NULL,
+         created_at TEXT,
+         UNIQUE(user_email, date)
+      )
+      """
+   )
+   # Create daily_wellness table for daily tracking
+   cur.execute(
+      """
+      CREATE TABLE IF NOT EXISTS daily_wellness (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         user_email TEXT NOT NULL,
+         sleep REAL DEFAULT 7.5,
+         water INTEGER DEFAULT 0,
+         activity TEXT DEFAULT 'Light Stretching',
+         stress INTEGER DEFAULT 5,
+         date TEXT NOT NULL,
+         created_at TEXT,
+         UNIQUE(user_email, date)
+      )
+      """
    )
    # Migration: detect older schema variations and migrate data if necessary
    cur.execute("PRAGMA table_info(grocery_items)")
@@ -620,6 +650,88 @@ def verify_security_answer():
    return redirect(url_for('index'))
 
 
+def get_mood_wellness_data(user_email: str):
+    """
+    Helper to get mood and wellness data for a user.
+    Fetches real mood data from the DB and calculates weekly summary and tips.
+    """
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Get today's mood
+    cur.execute('SELECT mood FROM daily_moods WHERE user_email = ? AND date = ?', (user_email, today_date))
+    row = cur.fetchone()
+    current_mood = row['mood'] if row else 'Neutral'
+    
+    # Get today's wellness
+    cur.execute('SELECT sleep, water, activity, stress FROM daily_wellness WHERE user_email = ? AND date = ?', (user_email, today_date))
+    w_row = cur.fetchone()
+    if w_row:
+        sleep = w_row['sleep']
+        water = w_row['water']
+        activity = w_row['activity']
+        stress = w_row['stress']
+    else:
+        sleep = '7.5'
+        water = '0'
+        activity = 'Light Stretching'
+        stress = 5
+
+    # Get weekly data
+    dt = datetime.now()
+    start_of_week = dt - timedelta(days=dt.weekday())
+    dates = [(start_of_week + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+    
+    week_data = [2] * 7
+    placeholders = ','.join(['?'] * 7)
+    cur.execute(f'SELECT date, mood_score FROM daily_moods WHERE user_email = ? AND date IN ({placeholders})', (user_email, *dates))
+    rows = cur.fetchall()
+    
+    mood_counts = {}
+    for r in rows:
+        d_str = r['date']
+        try:
+            d_date = datetime.strptime(d_str, '%Y-%m-%d')
+            idx = d_date.weekday()
+            if 0 <= idx <= 6:
+                week_data[idx] = r['mood_score']
+            
+            score = r['mood_score']
+            mood_counts[score] = mood_counts.get(score, 0) + 1
+        except:
+            pass
+
+    conn.close()
+
+    # Generate Wellness Tip based on most frequent mood
+    if not mood_counts:
+        most_frequent_score = 2
+    else:
+        most_frequent_score = max(mood_counts, key=mood_counts.get)
+        
+    tips_map = {
+        0: ["Take a deep breath. Inhale peace, exhale stress.", "Try a 5-minute meditation session."],
+        1: ["Rest is productive. Get some extra sleep tonight.", "Short naps can boost alertness."],
+        2: ["Stability is good. Keep moving forward.", "A balanced day is a good day."],
+        3: ["Share your positive energy with someone today!", "Keep up the great vibes!"]
+    }
+    
+    import random
+    selected_tips = tips_map.get(most_frequent_score, tips_map[2])
+    wellness_tip = random.choice(selected_tips)
+
+    return {
+        'sleep': str(sleep),
+        'water': str(water),
+        'activity': activity,
+        'stress': stress,
+        'mood': current_mood,
+        'wellness_tip': wellness_tip,
+        'week_data': week_data
+    }
+
+
 
 
 @app.route('/dashboard')
@@ -686,6 +798,8 @@ def dashboard():
        # No budget, no spend -> neutral/green
        pass
 
+   # Get Mood & Wellness Data
+   mood_data = get_mood_wellness_data(user_email) if user_email else {}
 
    return render_template('dashboard.html', first=first, today=today, tasks=tasks,
                           budget_limit=budget_limit, total_spent=total_spent,
@@ -693,7 +807,8 @@ def dashboard():
                           selected_month=selected_month,
                           selected_month_iso=selected_month_iso,
                           budget_color=budget_color,
-                          budget_icon=budget_icon)
+                          budget_icon=budget_icon,
+                          mood_data=mood_data)
 
 
 
@@ -1041,15 +1156,18 @@ def mood():
    today = datetime.now().strftime('%B %d, %Y')
   
    # Placeholder data - in a real app, fetch from DB
+   mw_data = get_mood_wellness_data(user_email)
    data = {
-       'sleep': '7.5',
-       'water': '6',
-       'activity': 'Light Stretching',
-       'stress': 5,
-       'mood': 'Neutral'
+       'sleep': mw_data.get('sleep'),
+       'water': mw_data.get('water'),
+       'activity': mw_data.get('activity'),
+       'stress': mw_data.get('stress'),
+       'mood': mw_data.get('mood'),
+       'wellness_tip': mw_data.get('wellness_tip')
    }
+   week_data = mw_data.get('week_data')
   
-   return render_template('mood.html', first=first, today=today, data=data)
+   return render_template('mood.html', first=first, today=today, data=data, week_data=week_data)
 
 
 
@@ -1061,8 +1179,25 @@ def update_mood():
        return redirect(url_for('index'))
   
    mood_val = request.form.get('mood')
-   # Save to DB logic here...
-   # For now just flash and redirect
+   mood_scores = {'Stressed': 0, 'Tired': 1, 'Neutral': 2, 'Happy': 3}
+   score = mood_scores.get(mood_val, 2)
+   date_str = datetime.now().strftime('%Y-%m-%d')
+   
+   conn = get_db()
+   cur = conn.cursor()
+   try:
+      cur.execute("""
+         INSERT INTO daily_moods (user_email, mood, mood_score, date, created_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(user_email, date)
+         DO UPDATE SET mood = excluded.mood,
+                       mood_score = excluded.mood_score
+      """, (user_email, mood_val, score, date_str, datetime.now().isoformat()))
+      conn.commit()
+   except Exception as e:
+      print(f"Error saving mood: {e}")
+   conn.close()
+
    flash(f"Mood logged: {mood_val}")
   
    return redirect(url_for('mood'))
@@ -1072,6 +1207,39 @@ def update_mood():
 
 
 
+
+
+@app.route('/update_wellness', methods=['POST'])
+def update_wellness():
+   user_email = session.get('user_email')
+   if not user_email:
+      return jsonify({'success': False, 'error': 'unauthenticated'}), 401
+
+   data = request.get_json() or {}
+   metric = data.get('metric')
+   value = data.get('value')
+   date_str = datetime.now().strftime('%Y-%m-%d')
+
+   if metric not in ['sleep', 'water', 'activity', 'stress']:
+      return jsonify({'success': False, 'error': 'invalid metric'}), 400
+
+   conn = get_db()
+   cur = conn.cursor()
+   try:
+      cur.execute(f"""
+         INSERT INTO daily_wellness (user_email, {metric}, date, created_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(user_email, date)
+         DO UPDATE SET {metric} = excluded.{metric}
+      """, (user_email, value, date_str, datetime.now().isoformat()))
+      conn.commit()
+      success = True
+   except Exception as e:
+      print(f"Error updating wellness: {e}")
+      success = False
+   conn.close()
+
+   return jsonify({'success': success})
 
 
 @app.route('/logout')
