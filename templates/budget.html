@@ -6,8 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MomCare Budget & Expenses</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -44,8 +43,12 @@
             </div>
           </div>
           <div class="flex justify-between mb-3 text-[15px]">
+            <div class="font-medium">Total Spent Today</div>
+            <div class="font-bold text-[#1f4f1e]">₱ {{ "{:,.2f}".format(total_spent_today) }}</div>
+          </div>
+          <div class="flex justify-between mb-3 text-[15px]">
             <div class="font-medium">Total Spent This Month</div>
-            <div class="font-bold text-[#1f4f1e]" id="totalSpentDisplay">₱ 0.00</div>
+            <div class="font-bold text-[#1f4f1e]" id="totalSpentDisplay">₱ {{ "{:,.2f}".format(total_spent) }}</div>
           </div>
 
           <div class="border-t border-dashed border-gray-400 my-4"></div>
@@ -501,6 +504,7 @@
 
     function updateSummaryUI() {
       const budgetLimit = Number(document.getElementById("budgetInput").value) || 0;
+      const monthlyIncome = Number(document.getElementById("incomeInput").value) || 0;
 
       document.getElementById("totalSpentDisplay").textContent = formatCurrency(TOTAL_SPENT);
 
@@ -509,8 +513,8 @@
 
       document.getElementById("budgetUsedLabel").textContent = `${percent.toFixed(1)}% Budget Used`;
 
-      const remaining = budgetLimit - TOTAL_SPENT;
-      document.getElementById("remainingDisplay").textContent = "Remaining: " + formatCurrency(remaining);
+      const remaining = monthlyIncome - TOTAL_SPENT;
+      document.getElementById("remainingDisplay").textContent = "Remaining Balance: " + formatCurrency(remaining);
 
       updateEcoCheckbox();
       updateCategoryView();
@@ -570,6 +574,19 @@
       monthData.settings.budget_limit = limit;
 
       saveStore(store);
+
+      // Sync to backend
+      fetch('/api/budget-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month_iso: ACTIVE_MONTH,
+          income: income,
+          budget_limit: limit
+        })
+      }).then(r => r.json()).then(d => {
+        if (d.error) console.error("Failed to save budget:", d.error);
+      }).catch(e => console.error("Sync error:", e));
     }
 
     function saveExpenseForMonth(exp) {
@@ -577,6 +594,19 @@
       const monthData = ensureMonth(store, ACTIVE_MONTH);
       monthData.expenses.push(exp);
       saveStore(store);
+
+      // Sync to backend
+      fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: exp.category,
+          amount: exp.amount,
+          expense_date: exp.date,
+          description: exp.notes,
+          month_iso: ACTIVE_MONTH
+        })
+      }).then(r => r.json()).catch(e => console.error("Expense sync error:", e));
     }
 
     function saveGroceryForMonth(g) {
@@ -584,6 +614,19 @@
       const monthData = ensureMonth(store, ACTIVE_MONTH);
       monthData.groceries.push(g);
       saveStore(store);
+
+      // Sync to backend
+      fetch('/api/groceries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_name: g.item,
+          quantity: g.qty,
+          estimated_cost: g.cost,
+          category: g.category,
+          month_iso: ACTIVE_MONTH
+        })
+      }).then(r => r.json()).catch(e => console.error("Grocery sync error:", e));
     }
 
     function hardDeleteGroceryById(groceryId) {
@@ -799,167 +842,218 @@
 
     // ---- DOM Ready ----
     document.addEventListener("DOMContentLoaded", () => {
-      ACTIVE_MONTH = getActiveMonthIso();
-
-      initHeaderDateOnly();
-      syncNavbarMonthUI();
-
-      loadMonthToUI(ACTIVE_MONTH);
-
-      // Save settings
-      const budgetInput = document.getElementById("budgetInput");
-      const incomeInput = document.getElementById("incomeInput");
-
-      if (budgetInput) {
-        budgetInput.addEventListener("change", () => {
-          saveSettingsForMonth();
-          loadMonthToUI(ACTIVE_MONTH);
-        });
+      // Prioritize server-selected month
+      const serverIso = "{{ selected_month_iso }}";
+      if (serverIso && /^\d{4}-\d{2}$/.test(serverIso)) {
+        ACTIVE_MONTH = serverIso;
+        // Sync local selection
+        const s = loadStore();
+        s.ui.selectedMonth = ACTIVE_MONTH;
+        saveStore(s);
+      } else {
+        ACTIVE_MONTH = getActiveMonthIso();
       }
 
-      if (incomeInput) {
-        incomeInput.addEventListener("change", () => {
-          saveSettingsForMonth();
-        });
-      }
+      // Hydrate from server data
+      const sIncome = Number("{{ budget_data.income }}");
+      const sLimit = Number("{{ budget_data.budget_limit }}");
 
-      // Draft listeners
-      ["expenseAmount", "expenseCategory", "expenseDate", "expenseNotes"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener("input", saveDraftExpense);
-        if (el && id !== "expenseNotes") el.addEventListener("change", saveDraftExpense);
+      const st = loadStore();
+      const mData = ensureMonth(st, ACTIVE_MONTH);
+
+      // Update settings
+      mData.settings.income = sIncome;
+      mData.settings.budget_limit = sLimit;
+
+      // Hydrate expenses from server
+      const sExpenses = {{ expenses | tojson | safe
+    }};
+    if (sExpenses && sExpenses.length > 0) {
+      // Map server fields to local fields if necessary
+      mData.expenses = sExpenses.map(e => ({
+        id: e.id,
+        category: e.category,
+        amount: e.amount,
+        date: e.expense_date,
+        notes: e.description,
+        isEco: false // server doesn't store this specifically yet
+      }));
+    }
+
+    // Hydrate groceries from server
+    const sGroceries = {{ groceries | tojson | safe }};
+    if (sGroceries && sGroceries.length > 0) {
+      mData.groceries = sGroceries.map(g => ({
+        id: g.id,
+        item: g.item_name,
+        qty: g.quantity,
+        cost: g.estimated_cost,
+        category: g.category,
+        checked: !!g.is_checked
+      }));
+    }
+
+    saveStore(st);
+
+    initHeaderDateOnly();
+    syncNavbarMonthUI();
+
+    loadMonthToUI(ACTIVE_MONTH);
+
+    // Save settings
+    const budgetInput = document.getElementById("budgetInput");
+    const incomeInput = document.getElementById("incomeInput");
+
+    if (budgetInput) {
+      budgetInput.addEventListener("change", () => {
+        saveSettingsForMonth();
+        loadMonthToUI(ACTIVE_MONTH);
       });
+    }
 
-      ["groceryItem", "groceryQty", "groceryCost", "groceryBudgetCat"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener("input", saveDraftGrocery);
-        if (el) el.addEventListener("change", saveDraftGrocery);
+    if (incomeInput) {
+      incomeInput.addEventListener("change", () => {
+        saveSettingsForMonth();
       });
+    }
 
-      // Eco checkbox updates
-      const expenseAmount = document.getElementById("expenseAmount");
-      if (expenseAmount) expenseAmount.addEventListener("input", updateEcoCheckbox);
+    // Draft listeners
+    ["expenseAmount", "expenseCategory", "expenseDate", "expenseNotes"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", saveDraftExpense);
+      if (el && id !== "expenseNotes") el.addEventListener("change", saveDraftExpense);
+    });
 
-      // Add expense
-      const expenseForm = document.getElementById("expenseForm");
-      if (expenseForm) {
-        expenseForm.addEventListener("submit", (e) => {
-          e.preventDefault();
+    ["groceryItem", "groceryQty", "groceryCost", "groceryBudgetCat"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", saveDraftGrocery);
+      if (el) el.addEventListener("change", saveDraftGrocery);
+    });
 
-          const amount = Number(document.getElementById("expenseAmount").value);
-          const category = document.getElementById("expenseCategory").value;
-          const date = document.getElementById("expenseDate").value;
-          const notes = document.getElementById("expenseNotes").value;
-          const isEco = document.getElementById("ecoCheckbox").checked;
+    // Eco checkbox updates
+    const expenseAmount = document.getElementById("expenseAmount");
+    if (expenseAmount) expenseAmount.addEventListener("input", updateEcoCheckbox);
 
-          if (!amount || amount <= 0 || !category || !date) {
-            alert("Please fill in Amount, Category, and Date.");
-            return;
-          }
+    // Add expense
+    const expenseForm = document.getElementById("expenseForm");
+    if (expenseForm) {
+      expenseForm.addEventListener("submit", (e) => {
+        e.preventDefault();
 
-          const exp = {
-            id: uuid(),
-            amount,
-            category,
-            date,
-            notes,
-            isEco,
-            createdAt: nowIso()
-          };
+        const amount = Number(document.getElementById("expenseAmount").value);
+        const category = document.getElementById("expenseCategory").value;
+        const date = document.getElementById("expenseDate").value;
+        const notes = document.getElementById("expenseNotes").value;
+        const isEco = document.getElementById("ecoCheckbox").checked;
 
-          saveExpenseForMonth(exp);
-          clearExpenseForm(true);
-          loadMonthToUI(ACTIVE_MONTH);
-        });
-      }
+        if (!amount || amount <= 0 || !category || !date) {
+          alert("Please fill in Amount, Category, and Date.");
+          return;
+        }
 
-      // Cancel expense (clears draft too)
-      const clearExpenseBtn = document.getElementById("clearExpenseBtn");
-      if (clearExpenseBtn) {
-        clearExpenseBtn.addEventListener("click", () => clearExpenseForm(true));
-      }
+        const exp = {
+          id: uuid(),
+          amount,
+          category,
+          date,
+          notes,
+          isEco,
+          createdAt: nowIso()
+        };
 
-      // Add grocery
-      const groceryForm = document.getElementById("groceryForm");
-      if (groceryForm) {
-        groceryForm.addEventListener("submit", (e) => {
-          e.preventDefault();
+        saveExpenseForMonth(exp);
+        clearExpenseForm(true);
+        loadMonthToUI(ACTIVE_MONTH);
+      });
+    }
 
-          const item = document.getElementById("groceryItem").value.trim();
-          const qty = Number(document.getElementById("groceryQty").value) || 1;
-          const cost = Number(document.getElementById("groceryCost").value);
-          const category = document.getElementById("groceryBudgetCat").value || "Groceries";
+    // Cancel expense (clears draft too)
+    const clearExpenseBtn = document.getElementById("clearExpenseBtn");
+    if (clearExpenseBtn) {
+      clearExpenseBtn.addEventListener("click", () => clearExpenseForm(true));
+    }
 
-          if (!item || !cost) {
-            alert("Please provide an item name and estimated cost.");
-            return;
-          }
+    // Add grocery
+    const groceryForm = document.getElementById("groceryForm");
+    if (groceryForm) {
+      groceryForm.addEventListener("submit", (e) => {
+        e.preventDefault();
 
-          const g = {
-            id: uuid(),
-            item,
-            qty,
-            cost,
-            category,
-            checked: true,
-            createdAt: nowIso()
-          };
+        const item = document.getElementById("groceryItem").value.trim();
+        const qty = Number(document.getElementById("groceryQty").value) || 1;
+        const cost = Number(document.getElementById("groceryCost").value);
+        const category = document.getElementById("groceryBudgetCat").value || "Groceries";
 
-          saveGroceryForMonth(g);
+        if (!item || !cost) {
+          alert("Please provide an item name and estimated cost.");
+          return;
+        }
 
-          // Clear grocery draft + form
-          const store = loadStore();
-          const monthData = ensureMonth(store, ACTIVE_MONTH);
-          monthData.drafts.grocery = { item: "", qty: "1", cost: "", category: "" };
-          saveStore(store);
+        const g = {
+          id: uuid(),
+          item,
+          qty,
+          cost,
+          category,
+          checked: true,
+          createdAt: nowIso()
+        };
 
-          groceryForm.reset();
-          loadMonthToUI(ACTIVE_MONTH);
-        });
-      }
+        saveGroceryForMonth(g);
 
-      // Grocery table actions
-      const groceryTableBody = document.getElementById("groceryTableBody");
-      if (groceryTableBody) {
-        groceryTableBody.addEventListener("click", (e) => {
-          const row = e.target.closest("tr");
-          if (!row || !row.dataset.id) return;
+        // Clear grocery draft + form
+        const store = loadStore();
+        const monthData = ensureMonth(store, ACTIVE_MONTH);
+        monthData.drafts.grocery = { item: "", qty: "1", cost: "", category: "" };
+        saveStore(store);
 
-          const groceryId = row.dataset.id;
+        groceryForm.reset();
+        loadMonthToUI(ACTIVE_MONTH);
+      });
+    }
 
-          if (e.target.classList.contains("btn-remove")) {
-            if (confirm("Delete this item?")) {
-              hardDeleteGroceryById(groceryId);
-              loadMonthToUI(ACTIVE_MONTH);
-            }
-          }
-        });
+    // Grocery table actions
+    const groceryTableBody = document.getElementById("groceryTableBody");
+    if (groceryTableBody) {
+      groceryTableBody.addEventListener("click", (e) => {
+        const row = e.target.closest("tr");
+        if (!row || !row.dataset.id) return;
 
-        groceryTableBody.addEventListener("change", (e) => {
-          const row = e.target.closest("tr");
-          if (!row || !row.dataset.id) return;
+        const groceryId = row.dataset.id;
 
-          if (e.target.classList.contains("grocery-check")) {
-            setGroceryChecked(row.dataset.id, e.target.checked);
-          }
-        });
-      }
-
-      // Category clear (hard delete all items in that category for this month)
-      const categorySummary = document.getElementById("categorySummary");
-      if (categorySummary) {
-        categorySummary.addEventListener("click", (e) => {
-          if (!e.target.classList.contains("btn-clear-cat")) return;
-
-          const cat = e.target.dataset.category;
-          if (!cat) return;
-
-          if (confirm(`Clear ALL "${cat}" entries for ${ACTIVE_MONTH}?`)) {
-            hardDeleteCategory(cat);
+        if (e.target.classList.contains("btn-remove")) {
+          if (confirm("Delete this item?")) {
+            hardDeleteGroceryById(groceryId);
             loadMonthToUI(ACTIVE_MONTH);
           }
-        });
-      }
+        }
+      });
+
+      groceryTableBody.addEventListener("change", (e) => {
+        const row = e.target.closest("tr");
+        if (!row || !row.dataset.id) return;
+
+        if (e.target.classList.contains("grocery-check")) {
+          setGroceryChecked(row.dataset.id, e.target.checked);
+        }
+      });
+    }
+
+    // Category clear (hard delete all items in that category for this month)
+    const categorySummary = document.getElementById("categorySummary");
+    if (categorySummary) {
+      categorySummary.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("btn-clear-cat")) return;
+
+        const cat = e.target.dataset.category;
+        if (!cat) return;
+
+        if (confirm(`Clear ALL "${cat}" entries for ${ACTIVE_MONTH}?`)) {
+          hardDeleteCategory(cat);
+          loadMonthToUI(ACTIVE_MONTH);
+        }
+      });
+    }
     });
   </script>
 
