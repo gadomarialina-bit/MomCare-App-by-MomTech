@@ -5,7 +5,8 @@ from pathlib import Path
 import sqlite3
 from sqlite3 import Connection
 import os
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 
 
 
@@ -226,36 +227,6 @@ def init_db():
         )
         """
     )
-
-    # Check for missing month_iso in expenses (Migration)
-    cur.execute("PRAGMA table_info(expenses)")
-    cols = [r[1] for r in cur.fetchall()]
-    if 'month_iso' not in cols:
-        try:
-            cur.execute("ALTER TABLE expenses ADD COLUMN month_iso TEXT")
-            # Attempt to backfill from expense_date (YYYY-MM-DD -> YYYY-MM)
-            cur.execute("UPDATE expenses SET month_iso = substr(expense_date, 1, 7) WHERE expense_date IS NOT NULL AND length(expense_date) >= 7")
-        except Exception:
-            pass
-   
-    if 'category' not in cols:
-        try:
-            cur.execute("ALTER TABLE expenses ADD COLUMN category TEXT")
-        except Exception:
-            pass
-
-    if 'description' not in cols:
-        try:
-            cur.execute("ALTER TABLE expenses ADD COLUMN description TEXT")
-        except Exception:
-            pass
-           
-    if 'expense_date' not in cols:
-        try:
-            cur.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT")
-        except Exception:
-            pass
-
     # Migration: detect older schema variations and migrate data if necessary
     cur.execute("PRAGMA table_info(grocery_items)")
     cols = [r[1] for r in cur.fetchall()]
@@ -269,6 +240,38 @@ def init_db():
         except Exception:
             # ignore; best-effort migration
             pass
+
+    # Create daily_moods table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daily_moods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            date TEXT NOT NULL,
+            mood TEXT,
+            mood_score INTEGER,
+            created_at TEXT,
+            UNIQUE(user_email, date)
+        )
+        """
+    )
+
+    # Create daily_wellness table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daily_wellness (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            date TEXT NOT NULL,
+            sleep TEXT,
+            water TEXT,
+            activity TEXT,
+            stress INTEGER,
+            created_at TEXT,
+            UNIQUE(user_email, date)
+        )
+        """
+    )
 
 
     if old_style:
@@ -670,6 +673,88 @@ def verify_security_answer():
     return redirect(url_for('index'))
 
 
+def get_mood_wellness_data(user_email: str):
+    """
+    Helper to get mood and wellness data for a user.
+    Fetches real mood data from the DB and calculates weekly summary and tips.
+    """
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Get today's mood
+    cur.execute('SELECT mood FROM daily_moods WHERE user_email = ? AND date = ?', (user_email, today_date))
+    row = cur.fetchone()
+    current_mood = row['mood'] if row else 'Neutral'
+    
+    # Get today's wellness
+    cur.execute('SELECT sleep, water, activity, stress FROM daily_wellness WHERE user_email = ? AND date = ?', (user_email, today_date))
+    w_row = cur.fetchone()
+    if w_row:
+        sleep = w_row['sleep']
+        water = w_row['water']
+        activity = w_row['activity']
+        stress = w_row['stress']
+    else:
+        sleep = '7.5'
+        water = '0'
+        activity = 'Light Stretching'
+        stress = 5
+
+    # Get weekly data
+    dt = datetime.now()
+    start_of_week = dt - timedelta(days=dt.weekday())
+    dates = [(start_of_week + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+    
+    week_data = [2] * 7
+    placeholders = ','.join(['?'] * 7)
+    cur.execute(f'SELECT date, mood_score FROM daily_moods WHERE user_email = ? AND date IN ({placeholders})', (user_email, *dates))
+    rows = cur.fetchall()
+    
+    mood_counts = {}
+    for r in rows:
+        d_str = r['date']
+        try:
+            d_date = datetime.strptime(d_str, '%Y-%m-%d')
+            idx = d_date.weekday()
+            if 0 <= idx <= 6:
+                week_data[idx] = r['mood_score']
+            
+            score = r['mood_score']
+            mood_counts[score] = mood_counts.get(score, 0) + 1
+        except:
+            pass
+
+    conn.close()
+
+    # Generate Wellness Tip based on most frequent mood
+    if not mood_counts:
+        most_frequent_score = 2
+    else:
+        most_frequent_score = max(mood_counts, key=mood_counts.get)
+        
+    tips_map = {
+        0: ["Take a deep breath. Inhale peace, exhale stress.", "Try a 5-minute meditation session."],
+        1: ["Rest is productive. Get some extra sleep tonight.", "Short naps can boost alertness."],
+        2: ["Stability is good. Keep moving forward.", "A balanced day is a good day."],
+        3: ["Share your positive energy with someone today!", "Keep up the great vibes!"]
+    }
+    
+    import random
+    selected_tips = tips_map.get(most_frequent_score, tips_map[2])
+    wellness_tip = random.choice(selected_tips)
+
+    return {
+        'sleep': str(sleep),
+        'water': str(water),
+        'activity': activity,
+        'stress': stress,
+        'mood': current_mood,
+        'wellness_tip': wellness_tip,
+        'week_data': week_data
+    }
+
+
 
 
 @app.route('/dashboard')
@@ -689,135 +774,123 @@ def dashboard():
     remaining_budget = 0
     budget_color = "green"
     budget_icon = "fa-check-circle"
+    selected_month_iso = datetime.now().strftime('%Y-%m')
+    selected_month = datetime.now().strftime('%B %Y')
     
     if not user_email:
         flash('Please sign in to access your dashboard.')
         return redirect(url_for('login'))
    
     # Handle month selection
-    selected_month_iso = request.args.get('month')
-    selected_month = None
-   
-    if selected_month_iso:
+    req_month = request.args.get('month')
+    if req_month:
         try:
             # Parse YYYY-MM
-            date_obj = datetime.strptime(selected_month_iso, '%Y-%m')
+            date_obj = datetime.strptime(req_month, '%Y-%m')
+            selected_month_iso = req_month
             selected_month = date_obj.strftime('%B %Y')
         except ValueError:
-            # Fallback if invalid format
-            selected_month_iso = datetime.now().strftime('%Y-%m')
-            selected_month = datetime.now().strftime('%B %Y')
+            pass
+
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Auto-delete tasks from previous days
+    cleanup_old_tasks(user_email)
+
+    # Load tasks
+    today_iso = datetime.now().strftime('%Y-%m-%d')
+    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND (completed = 0 OR task_date = ?) ORDER BY task_date ASC, start_time ASC', (user_email, today_iso))
+    rows = cur.fetchall()
+    tasks = [dict(r) for r in rows]
+
+    # Calculate Progress & Pending
+    total_tasks = len(tasks)
+    done_tasks = len([t for t in tasks if t['completed']])
+    pending_count = total_tasks - done_tasks
+    progress_percentage = int((done_tasks / total_tasks) * 100) if total_tasks > 0 else 0
+   
+    # Filter tasks for display (Only show pending)
+    tasks = [t for t in tasks if not t['completed']]
+
+    # 1. Budget Settings (Fallback)
+    cur.execute('SELECT income, budget_limit FROM monthly_budgets WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
+    budget_row = cur.fetchone()
+    if budget_row:
+        income = budget_row['income']
+        budget_limit = budget_row['budget_limit']
     else:
-        # Default to current month
-        selected_month_iso = datetime.now().strftime('%Y-%m')
-        selected_month = datetime.now().strftime('%B %Y')
-
-    if user_email:
-        conn = get_db()
-        cur = conn.cursor()
-       
-        # Auto-delete tasks from previous days
-        cleanup_old_tasks(user_email)
-
-        # Load ALL INCOMPLETE tasks (carry-over) OR any task scheduled for TODAY (including those marked done today)
-        today_iso = datetime.now().strftime('%Y-%m-%d')
-        cur.execute('SELECT * FROM tasks WHERE user_email = ? AND (completed = 0 OR task_date = ?) ORDER BY task_date ASC, start_time ASC', (user_email, today_iso))
-        rows = cur.fetchall()
-        tasks = [dict(r) for r in rows]
-
-        # Calculate Progress & Pending
-        total_tasks = len(tasks)
-        done_tasks = len([t for t in tasks if t['completed']])
-        pending_count = total_tasks - done_tasks
-        progress_percentage = int((done_tasks / total_tasks) * 100) if total_tasks > 0 else 0
-       
-        # Filter tasks for display (Only show pending)
-        tasks = [t for t in tasks if not t['completed']]
-
-        # 1. Get Budget Limit & Income (Fallback to most recent if missing for this month)
-        cur.execute('SELECT income, budget_limit FROM monthly_budgets WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
-        budget_row = cur.fetchone()
-        if budget_row:
-            income = budget_row['income']
-            budget_limit = budget_row['budget_limit']
+        cur.execute('SELECT income, budget_limit FROM monthly_budgets WHERE user_email = ? ORDER BY month_iso DESC LIMIT 1', (user_email,))
+        latest_row = cur.fetchone()
+        if latest_row:
+            income = latest_row['income']
+            budget_limit = latest_row['budget_limit']
         else:
-            # Try to get the latest settings from any month
-            cur.execute('SELECT income, budget_limit FROM monthly_budgets WHERE user_email = ? ORDER BY month_iso DESC LIMIT 1', (user_email,))
-            latest_row = cur.fetchone()
-            if latest_row:
-                income = latest_row['income']
-                budget_limit = latest_row['budget_limit']
-            else:
-                # Default values matching budget.html JS
-                income = 160000
-                budget_limit = 160000
+            income = 160000
+            budget_limit = 160000
 
-        # 2. Get Total Spent Today
-        cur.execute('SELECT amount FROM expenses WHERE user_email = ? AND expense_date = ?', (user_email, today_iso))
-        total_spent_today = sum(row['amount'] for row in cur.fetchall())
-        # Add groceries from today
-        cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ?', (user_email, today_iso))
-        total_spent_today += sum(row['estimated_cost'] or 0 for row in cur.fetchall())
+    # 2. Daily Spend
+    cur.execute('SELECT amount FROM expenses WHERE user_email = ? AND expense_date = ?', (user_email, today_iso))
+    total_spent_today = sum(row['amount'] for row in cur.fetchall())
+    cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ?', (user_email, today_iso))
+    total_spent_today += sum(row['estimated_cost'] or 0 for row in cur.fetchall())
+   
+    # 3. Monthly Spend
+    cur.execute('SELECT category, amount FROM expenses WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
+    monthly_expenses_rows = cur.fetchall()
+    cur.execute('SELECT category, estimated_cost FROM grocery_items WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
+    grocery_rows = cur.fetchall()
+    total_spent_month = sum(row['amount'] for row in monthly_expenses_rows) + sum(row['estimated_cost'] or 0 for row in grocery_rows)
+   
+    # Calculate Top Category
+    cat_totals = {c: 0 for c in ["Groceries", "Kids/School", "Transport", "Utilities", "Home Mortgage", "Subscription", "Savings", "Others"]}
+    for row in monthly_expenses_rows:
+        c = row['category']
+        if c not in cat_totals: c = "Others"
+        cat_totals[c] += row['amount']
+    for row in grocery_rows:
+        c = row['category'] or "Groceries"
+        if c not in cat_totals: c = "Others"
+        cat_totals[c] += (row['estimated_cost'] or 0)
        
-        # 3. Get Monthly Totals (Expenses + Groceries)
-        cur.execute('SELECT category, amount FROM expenses WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
-        monthly_expenses_rows = cur.fetchall()
-       
-        cur.execute('SELECT category, estimated_cost FROM grocery_items WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
-        grocery_rows = cur.fetchall()
-       
-        total_spent_month = sum(row['amount'] for row in monthly_expenses_rows) +                            sum(row['estimated_cost'] or 0 for row in grocery_rows)
-       
-        # Calculate Top Category
-        cat_totals = {c: 0 for c in ["Groceries", "Kids/School", "Transport", "Utilities", "Home Mortgage", "Subscription", "Savings", "Others"]}
-        for row in monthly_expenses_rows:
-            c = row['category']
-            if c not in cat_totals: c = "Others"
-            cat_totals[c] += row['amount']
-        for row in grocery_rows:
-            c = row['category'] or "Groceries"
-            if c not in cat_totals: c = "Others"
-            cat_totals[c] += (row['estimated_cost'] or 0)
-           
-        if any(v > 0 for v in cat_totals.values()):
-            top_cat = max(cat_totals, key=cat_totals.get)
-            top_amt = cat_totals[top_cat]
-            if top_amt > 0:
-                top_expense_category = f"{top_cat} (₱{top_amt:,.2f})"
+    if any(v > 0 for v in cat_totals.values()):
+        top_cat = max(cat_totals, key=cat_totals.get)
+        top_amt = cat_totals[top_cat]
+        if top_amt > 0:
+            top_expense_category = f"{top_cat} (₱{top_amt:,.2f})"
 
-        # Determine Status Indicator
-        budget_color = "green"
-        budget_icon = "fa-check-circle"
-        if budget_limit > 0:
-            pct = (total_spent_month / budget_limit) * 100
-            if pct > 100:
-                budget_color = "red"
-                budget_icon = "fa-exclamation-circle"
-            elif pct >= 70:
-                budget_color = "orange"
-                budget_icon = "fa-exclamation-triangle"
-        elif total_spent_month > 0:
+    # Status Indicator
+    if budget_limit > 0:
+        pct = (total_spent_month / budget_limit) * 100
+        if pct > 100:
             budget_color = "red"
             budget_icon = "fa-exclamation-circle"
+        elif pct >= 70:
+            budget_color = "orange"
+            budget_icon = "fa-exclamation-triangle"
+    elif total_spent_month > 0:
+        budget_color = "red"
+        budget_icon = "fa-exclamation-circle"
 
-        # Calculate remaining budget (Income minus spent)
-        remaining_budget = income - total_spent_month
-       
-        conn.close()
+    remaining_budget = income - total_spent_month
+    conn.close()
+
+    mood_data = get_mood_wellness_data(user_email)
 
     return render_template('dashboard.html', first=first, today=today, tasks=tasks,
-                        progress_percentage=progress_percentage,
-                        pending_count=pending_count,
-                        income=income,
-                        budget_limit=budget_limit, 
-                        total_spent_today=total_spent_today,
-                        total_spent_month=total_spent_month,
-                        remaining_budget=remaining_budget,
-                        top_expense_category=top_expense_category,
-                        selected_month=selected_month,
-                        selected_month_iso=selected_month_iso,
-                        budget_color=budget_color,
-                        budget_icon=budget_icon)
+                           progress_percentage=progress_percentage,
+                           pending_count=pending_count,
+                           income=income,
+                           budget_limit=budget_limit, 
+                           total_spent_today=total_spent_today,
+                           total_spent_month=total_spent_month,
+                           remaining_budget=remaining_budget,
+                           top_expense_category=top_expense_category,
+                           selected_month=selected_month,
+                           selected_month_iso=selected_month_iso,
+                           budget_color=budget_color,
+                           budget_icon=budget_icon,
+                           mood_data=mood_data)
 
 # JSON API endpoints for client-side integration
 @app.route('/api/tasks', methods=['GET'])
@@ -1215,7 +1288,7 @@ def mood():
         'stress': 5,
         'mood': 'Neutral'
     }
-  
+
     return render_template('mood.html', first=first, today=today, data=data)
 
 
@@ -1239,6 +1312,39 @@ def update_mood():
 
 
 
+
+
+@app.route('/update_wellness', methods=['POST'])
+def update_wellness():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'success': False, 'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    metric = data.get('metric')
+    value = data.get('value')
+    date_str = datetime.now().strftime('%Y-%m-%d')
+
+    if metric not in ['sleep', 'water', 'activity', 'stress']:
+        return jsonify({'success': False, 'error': 'invalid metric'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"""
+            INSERT INTO daily_wellness (user_email, {metric}, date, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_email, date)
+            DO UPDATE SET {metric} = excluded.{metric}
+        """, (user_email, value, date_str, datetime.now().isoformat()))
+        conn.commit()
+        success = True
+    except Exception as e:
+        print(f"Error updating wellness: {e}")
+        success = False
+    conn.close()
+
+    return jsonify({'success': success})
 
 
 @app.route('/logout')
