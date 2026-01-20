@@ -798,20 +798,21 @@ def dashboard():
     # Auto-delete tasks from previous days
     cleanup_old_tasks(user_email)
 
-    # Load tasks
+    # Load tasks for display (all pending tasks)
     today_iso = datetime.now().strftime('%Y-%m-%d')
-    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND (completed = 0 OR task_date = ?) ORDER BY task_date ASC, start_time ASC', (user_email, today_iso))
+    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND completed = 0 ORDER BY task_date ASC, start_time ASC', (user_email,))
     rows = cur.fetchall()
     tasks = [dict(r) for r in rows]
+    
+    # Calculate pending count from all incomplete tasks
+    pending_count = len(tasks)
 
-    # Calculate Progress & Pending
-    total_tasks = len(tasks)
-    done_tasks = len([t for t in tasks if t['completed']])
-    pending_count = total_tasks - done_tasks
-    progress_percentage = int((done_tasks / total_tasks) * 100) if total_tasks > 0 else 0
-   
-    # Filter tasks for display (Only show pending)
-    tasks = [t for t in tasks if not t['completed']]
+    # Calculate Progress based ONLY on today's tasks (for accurate 0-100% display)
+    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND task_date = ?', (user_email, today_iso))
+    today_tasks = cur.fetchall()
+    total_today = len(today_tasks)
+    done_today = len([t for t in today_tasks if t['completed']])
+    progress_percentage = int((done_today / total_today) * 100) if total_today > 0 else 0
 
     # 1. Budget Settings (Fallback)
     cur.execute('SELECT income, budget_limit FROM monthly_budgets WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
@@ -1563,9 +1564,11 @@ def edit_profile(user_id):
         conn.commit()
         conn.close()
 
-        # Update session if email changed
+        # Update session if email or first name changed
         if email != user_email:
             session['user_email'] = email
+        if first_name != session.get('user_first'):
+            session['user_first'] = first_name
 
         flash('Profile updated successfully.')
         return redirect(url_for('profile', user_id=user_id))
