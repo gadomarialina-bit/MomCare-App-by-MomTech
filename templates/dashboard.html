@@ -40,6 +40,24 @@
                     {% else %}
                     <div class="text-gray-500 text-sm italic mb-4">No tasks for today yet.</div>
                     {% endif %}
+                    {% if upcoming_reminders %}
+                    <div class="mt-4 border-t border-gray-100 pt-3">
+                        <p class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Upcoming Reminders (48h)
+                        </p>
+                        <div class="space-y-2">
+                            {% for rem in upcoming_reminders %}
+                            <div class="flex items-start gap-2 text-sm">
+                                <i class="fas fa-bell text-[#fecc47] mt-1 text-xs"></i>
+                                <div>
+                                    <div class="font-medium leading-tight text-[#104b0b]">{{ rem.title }}</div>
+                                    <div class="text-xs text-gray-500">{{ rem.time }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <p class="mt-4 font-medium" id="progressDisplay">Progress: {{ progress_percentage }}%</p>
                 </div>
                 <a href="{{ url_for('tasks') }}" class="block w-full md:w-auto mx-auto mt-6">

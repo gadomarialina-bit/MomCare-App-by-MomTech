@@ -22,15 +22,7 @@
 
       <div class="sm:mx-auto sm:w-full sm:max-w-sm">
         <div class="rounded-lg px-6 py-8">
-          {% with messages = get_flashed_messages() %}
-          {% if messages %}
-          <div class="mb-4 px-3">
-            {% for msg in messages %}
-            <div class="rounded-md text-red-800 px-3 py-2 mb-2 text-center">{{ msg }}</div>
-            {% endfor %}
-          </div>
-          {% endif %}
-          {% endwith %}
+
 
           <form action="/login" method="POST" class="space-y-4">
             <div class="my-4">
@@ -64,7 +56,8 @@
 
             <div class="my-4">
               <button id="sign-btn" type="submit"
-                class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Sign In</button>
+                class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Sign
+                In</button>
             </div>
 
             <div class="text-center text-sm text-[#104b0b]">

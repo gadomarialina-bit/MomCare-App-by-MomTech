@@ -873,6 +873,28 @@ def dashboard():
         budget_icon = "fa-exclamation-circle"
 
     remaining_budget = income - total_spent_month
+    # 4. Upcoming Reminders (Next 2 days)
+    upcoming_reminders = []
+    try:
+        cur.execute('SELECT title, remind_at FROM reminder_items WHERE user_email = ? AND remind_at IS NOT NULL ORDER BY remind_at ASC', (user_email,))
+        all_reminders = cur.fetchall()
+        
+        now_dt = datetime.now()
+        limit_dt = now_dt + timedelta(days=2)
+        
+        for r in all_reminders:
+            try:
+                # remind_at is stored as ISO string, e.g., "2023-10-27T14:30"
+                r_dt = datetime.fromisoformat(r['remind_at'])
+                if now_dt <= r_dt <= limit_dt:
+                    # Format for display: "Oct 27, 2:30 PM"
+                    display_time = r_dt.strftime('%b %d, %I:%M %p')
+                    upcoming_reminders.append({'title': r['title'], 'time': display_time})
+            except ValueError:
+                pass
+    except Exception:
+        pass
+
     conn.close()
 
     mood_data = get_mood_wellness_data(user_email)
@@ -890,7 +912,8 @@ def dashboard():
                            selected_month_iso=selected_month_iso,
                            budget_color=budget_color,
                            budget_icon=budget_icon,
-                           mood_data=mood_data)
+                           mood_data=mood_data,
+                           upcoming_reminders=upcoming_reminders)
 
 # JSON API endpoints for client-side integration
 @app.route('/api/tasks', methods=['GET'])
