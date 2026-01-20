@@ -1280,14 +1280,8 @@ def mood():
     first = session.get('user_first')
     today = datetime.now().strftime('%B %d, %Y')
   
-    # Placeholder data - in a real app, fetch from DB
-    data = {
-        'sleep': '7.5',
-        'water': '6',
-        'activity': 'Light Stretching',
-        'stress': 5,
-        'mood': 'Neutral'
-    }
+    # Fetch real mood/wellness data
+    data = get_mood_wellness_data(user_email)
 
     return render_template('mood.html', first=first, today=today, data=data)
 

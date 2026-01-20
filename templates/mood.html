@@ -469,7 +469,7 @@
             // Weekly mood chart with real data
             const ctx = document.getElementById('weeklyChart');
             if (ctx) {
-                const weekData = JSON.parse('{{ week_data | tojson }}') || [2, 2, 2, 2, 2, 2, 2];
+                const weekData = JSON.parse('{{ data.week_data | tojson }}') || [2, 2, 2, 2, 2, 2, 2];
 
                 new Chart(ctx.getContext('2d'), {
                     type: 'bar',
