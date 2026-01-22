@@ -1319,11 +1319,38 @@ def update_mood():
         return redirect(url_for('index'))
   
     mood_val = request.form.get('mood')
-    # Save to DB logic here...
-    # For now just flash and redirect
-    flash(f"Mood logged: {mood_val}")
+    mood_score_map = {'Stressed': 0, 'Tired': 1, 'Neutral': 2, 'Happy': 3}
+    mood_score = mood_score_map.get(mood_val, 2)
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    now = datetime.now().isoformat()
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO daily_moods (user_email, date, mood, mood_score, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_email, date)
+            DO UPDATE SET mood = excluded.mood, mood_score = excluded.mood_score
+        """, (user_email, date_str, mood_val, mood_score, now))
+        conn.commit()
+        
+        # After updating, fetch the fresh week_data to return to the frontend
+        wellness_data = get_mood_wellness_data(user_email)
+        week_data = wellness_data.get('week_data', [2, 2, 2, 2, 2, 2, 2])
+        
+        success = True
+    except Exception as e:
+        print(f"Error updating mood: {e}")
+        success = False
+        week_data = [2, 2, 2, 2, 2, 2, 2]
+    conn.close()
   
-    return redirect(url_for('mood'))
+    return jsonify({
+        'success': success,
+        'mood': mood_val,
+        'week_data': week_data
+    })
 
 
 
@@ -1341,26 +1368,34 @@ def update_wellness():
     data = request.get_json() or {}
     metric = data.get('metric')
     value = data.get('value')
+    remind_time = data.get('remind_time')  # Optional: HH:MM format
     date_str = datetime.now().strftime('%Y-%m-%d')
+    now_iso = datetime.now().isoformat()
 
     if metric not in ['sleep', 'water', 'activity', 'stress']:
         return jsonify({'success': False, 'error': 'invalid metric'}), 400
 
     conn = get_db()
     cur = conn.cursor()
+    success = False
     try:
         cur.execute(f"""
             INSERT INTO daily_wellness (user_email, {metric}, date, created_at)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(user_email, date)
             DO UPDATE SET {metric} = excluded.{metric}
-        """, (user_email, value, date_str, datetime.now().isoformat()))
+        """, (user_email, value, date_str, now_iso))
+        
+        # No longer generating reminders for wellness metrics as per user request
+        pass
+
         conn.commit()
         success = True
     except Exception as e:
         print(f"Error updating wellness: {e}")
         success = False
-    conn.close()
+    finally:
+        conn.close()
 
     return jsonify({'success': success})
 
