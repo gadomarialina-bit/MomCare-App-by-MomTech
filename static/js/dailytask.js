@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDate = new Date();
     const today = new Date();
     let selectedDate = new Date(); // default to today
-    let selectedTaskId = null; // for edit/delete
+    let selectedTaskIds = new Set(); // Changed from single ID to Set
     let fetchedTasks = [];
 
     // --- CALENDAR LOGIC ---
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Always render the 24-hour grid to avoid layout shifts
         for (let i = 0; i < 24; i++) {
             const hourDiv = document.createElement('div');
-            hourDiv.className = 'timeline-hour h-14 border-t border-gray-200 relative';
+            hourDiv.className = 'timeline-hour h-[60px] border-t border-gray-200 relative';
             hourDiv.setAttribute('data-hour', `${i}:00`);
             const label = document.createElement('div');
             label.className = 'absolute -left-16 -top-1 text-xs text-gray-500';
@@ -137,7 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render tasks
         // Filter tasks by selectedDate
-        const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        // Check for timezone correct date string
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
         const todaysAllTasks = fetchedTasks.filter(t => t.task_date === dateStr);
         // separate active tasks (not completed) from completed ones
         const todaysTasks = todaysAllTasks.filter(t => !t.completed);
@@ -164,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Layout each cluster side-by-side
-        const baseLeft = 16; // px inside timeline
+        const baseLeft = 70; // px inside timeline (shifted to avoid covering time labels)
         const gap = 8; // px between columns
         const containerWidth = timelineGrid.clientWidth || timelineGrid.getBoundingClientRect().width || 600;
 
@@ -199,18 +204,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskEl.style.backgroundColor = getColor(task.color);
 
                 const titleDiv = document.createElement('div');
-                titleDiv.className = 'flex-1 truncate pr-2';
+                titleDiv.className = 'flex-1 truncate pr-2 pointer-events-none'; // Ensure click goes to parent
                 titleDiv.textContent = task.title;
 
                 const doneBtn = document.createElement('button');
-                doneBtn.className = 'ml-2 text-green-700 bg-white/60 hover:bg-white/80 rounded-full w-7 h-7 flex items-center justify-center text-xs';
+                doneBtn.className = 'ml-2 text-green-700 bg-white/60 hover:bg-white/80 rounded-full w-7 h-7 flex items-center justify-center text-xs pointer-events-auto';
                 doneBtn.title = 'Mark as done';
                 doneBtn.innerHTML = '<i class="fas fa-check"></i>';
                 doneBtn.addEventListener('click', (e) => { e.stopPropagation(); markTaskDone(task.id, true); });
 
                 taskEl.appendChild(titleDiv);
                 taskEl.appendChild(doneBtn);
-                taskEl.addEventListener('click', (e) => { e.stopPropagation(); selectTask(task.id); });
+                // Updated click handler to pass event
+                taskEl.addEventListener('click', (e) => { selectTask(task.id, e); });
                 timelineGrid.appendChild(taskEl);
             });
         });
@@ -220,6 +226,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render the completed tasks list for this date
         renderDoneList(doneTasks);
+
+        // Re-apply selection visuals
+        if (selectedTaskIds.size > 0) {
+            selectedTaskIds.forEach(id => {
+                const el = document.querySelector(`.task-item[data-task-id="${id}"]`);
+                if (el) {
+                    el.style.opacity = '1';
+                    el.classList.add('ring-2', 'ring-green-400');
+                }
+            });
+
+            // If we have selected items that are no longer in view (e.g. date change), clear them?
+            // Actually behavior is clear selection on date change, handled in click listener for calendar.
+        }
+
+        updateActionButtons();
     }
 
     function getColor(colorName) {
@@ -232,19 +254,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function selectTask(id) {
-        selectedTaskId = id;
-        // Dim all tasks and remove previous highlight
+    function selectTask(id, event) {
+        // Prevent propagation if necessary, though handled in listener
+        if (event) event.stopPropagation();
+
+        const isMultiSelect = event && (event.ctrlKey || event.metaKey);
+
+        if (isMultiSelect) {
+            if (selectedTaskIds.has(id)) {
+                selectedTaskIds.delete(id);
+            } else {
+                selectedTaskIds.add(id);
+            }
+        } else {
+            // Single select, clear others unless it was already the only one selected (toggle off?)
+            // Standard behavior: click without ctrl selects only this one.
+            selectedTaskIds.clear();
+            selectedTaskIds.add(id);
+        }
+
+        // Update visuals
         document.querySelectorAll('.task-item').forEach(el => {
             el.style.opacity = '0.6';
-            el.classList.remove('ring-2', 'ring-amber-300', 'ring-green-400');
+            el.classList.remove('ring-2', 'ring-green-400');
         });
 
-        // Highlight the selected task (green ring)
-        const el = document.querySelector(`.task-item[data-task-id="${id}"]`);
-        if (el) {
-            el.style.opacity = '1';
-            el.classList.add('ring-2', 'ring-green-400');
+        selectedTaskIds.forEach(selId => {
+            const el = document.querySelector(`.task-item[data-task-id="${selId}"]`);
+            if (el) {
+                el.style.opacity = '1';
+                el.classList.add('ring-2', 'ring-green-400');
+            }
+        });
+
+        updateActionButtons();
+    }
+
+    function updateActionButtons() {
+        const count = selectedTaskIds.size;
+        const deleteBtnSpan = btnDeleteTask.querySelector('span');
+        const editBtnSpan = btnEditTask.querySelector('span');
+
+        if (count === 0) {
+            deleteBtnSpan.textContent = 'Delete Selected Task';
+            editBtnSpan.textContent = 'Edit Selected Task';
+            btnEditTask.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else if (count === 1) {
+            deleteBtnSpan.textContent = 'Delete Selected Task';
+            editBtnSpan.textContent = 'Edit Selected Task';
+            btnEditTask.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            deleteBtnSpan.textContent = `Delete ${count} Tasks`;
+            editBtnSpan.textContent = 'Edit (Select One)';
+            btnEditTask.classList.add('opacity-50', 'cursor-not-allowed');
         }
     }
 
@@ -268,6 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 fetchedTasks = data;
                 renderTimeline();
+                if (typeof renderPendingTasks === 'function') {
+                    renderPendingTasks(data);
+                }
             })
             .catch(err => console.error('Error loading tasks:', err));
     }
@@ -284,7 +349,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             showToast(done ? 'Task marked done' : 'Task restored', 'success');
             loadTasks();
-            selectedTaskId = null;
+            // If specific task was selected, deselect it or keep? Logic keeps it but redraws.
+            if (selectedTaskIds.has(id)) {
+                // usually completed tasks move to done list, so remove from selection
+                selectedTaskIds.delete(id);
+                updateActionButtons();
+            }
         }).catch(err => { console.error(err); showToast('Network error', 'error'); });
     }
 
@@ -359,8 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="text-sm mt-1">${escapeHtml(item.message || '')}</div>
                         </div>
                         <div class="flex flex-col items-end gap-2">
-                            <button data-id="${item.id}" class="edit-reminder text-blue-600 text-sm">Edit</button>
-                            <button data-id="${item.id}" class="delete-reminder text-red-600 text-sm">Delete</button>
+                            <button data-id="${item.id}" class="edit-reminder text-blue-600 hover:text-blue-800 text-sm" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button data-id="${item.id}" class="delete-reminder text-red-600 hover:text-red-800 text-sm" title="Delete"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>`;
                     reminderListEl.appendChild(li);
@@ -470,9 +540,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- MODAL & FORM ---
     function openModal(isEdit = false) {
         modal.style.display = 'flex';
-        if (isEdit && selectedTaskId) {
+        if (isEdit && selectedTaskIds.size === 1) {
             modalTitle.textContent = 'Edit Task';
-            const task = fetchedTasks.find(t => t.id === selectedTaskId);
+            const id = Array.from(selectedTaskIds)[0];
+            const task = fetchedTasks.find(t => t.id === id);
             if (task) {
                 document.getElementById('taskId').value = task.id;
                 document.getElementById('taskName').value = task.title;
@@ -492,7 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeModal() {
         modal.style.display = 'none';
-        selectedTaskId = null;
+        // Do not clear selection on modal close necessarily? Or maybe yes.
+        // User might have canceled add.
     }
 
     closeBtn.addEventListener('click', closeModal);
@@ -506,12 +578,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnEditTask.addEventListener('click', () => {
-        if (!selectedTaskId) { showToast('Select a task first!', 'info'); return; }
+        if (selectedTaskIds.size === 0) { showToast('Select a task first!', 'info'); return; }
+        if (selectedTaskIds.size > 1) { showToast('Please select only one task to edit.', 'info'); return; }
         openModal(true);
     });
 
     function openDeleteModal() {
         if (!deleteTaskModal) return;
+        // Update modal text
+        const textEl = document.getElementById('deleteTaskText');
+        if (textEl) {
+            const count = selectedTaskIds.size;
+            textEl.textContent = `Are you sure you want to delete ${count} task(s)?`;
+        }
         deleteTaskModal.classList.remove('hidden');
     }
 
@@ -521,30 +600,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnDeleteTask.addEventListener('click', () => {
-        if (!selectedTaskId) { showToast('Select a task first!', 'info'); return; }
+        if (selectedTaskIds.size === 0) { showToast('Select at least one task!', 'info'); return; }
         openDeleteModal();
     });
 
     if (cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', () => closeDeleteModal());
 
     if (confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', () => {
-        if (!selectedTaskId) { showToast('No task selected', 'error'); closeDeleteModal(); return; }
-        fetch(`/api/tasks/${selectedTaskId}`, { method: 'DELETE' })
+        if (selectedTaskIds.size === 0) { showToast('No tasks selected', 'error'); closeDeleteModal(); return; }
+
+        const idsToDelete = Array.from(selectedTaskIds);
+
+        fetch('/api/tasks/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: idsToDelete })
+        })
             .then(async res => {
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
                     const msg = data.error || `Server ${res.status}`;
-                    showToast('Unable to delete task: ' + msg, 'error');
+                    showToast('Unable to delete tasks: ' + msg, 'error');
                     closeDeleteModal();
                     return;
                 }
-                showToast('Task deleted', 'success');
+                showToast('Tasks deleted', 'success');
                 loadTasks();
-                selectedTaskId = null;
+                selectedTaskIds.clear();
+                updateActionButtons();
                 closeDeleteModal();
             }).catch(err => {
                 console.error(err);
-                showToast('Network error deleting task', 'error');
+                showToast('Network error deleting tasks', 'error');
                 closeDeleteModal();
             });
     });
@@ -559,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
             duration: parseFloat(document.getElementById('duration').value),
             color: document.getElementById('taskColor').value,
             is_priority: document.getElementById('isPriority').checked,
-            task_date: selectedDate.toISOString().split('T')[0]
+            task_date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` // Force local YYYY-MM-DD
         };
 
         if (id) {
@@ -587,6 +674,151 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(err => { console.error(err); showToast('Error saving task', 'error'); });
         }
     });
+
+    // --- PENDING TASKS LOGIC ---
+    let selectedPendingIds = new Set();
+    const pendingTasksCard = document.getElementById('pendingTasksCard');
+    const pendingTasksList = document.getElementById('pendingTasksList');
+    const movePendingBtn = document.getElementById('movePendingBtn');
+
+    function renderPendingTasks(allTasks) {
+        if (!pendingTasksCard || !pendingTasksList) return;
+
+        // Filter: not completed AND task_date < today
+        // We need 'today' in YYYY-MM-DD
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+
+        const overdue = allTasks.filter(t => !t.completed && t.task_date < todayStr);
+
+        if (overdue.length === 0) {
+            pendingTasksCard.classList.add('hidden');
+            return;
+        }
+
+        pendingTasksCard.classList.remove('hidden');
+        pendingTasksList.innerHTML = '';
+
+        overdue.forEach(t => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between p-2 bg-red-50 rounded border border-red-100';
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-2 overflow-hidden';
+
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.className = 'w-4 h-4 text-blue-600 rounded';
+            chk.checked = selectedPendingIds.has(t.id);
+            chk.addEventListener('change', (e) => {
+                if (e.target.checked) selectedPendingIds.add(t.id);
+                else selectedPendingIds.delete(t.id);
+                updatePendingControls();
+            });
+
+            const info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+            info.innerHTML = `
+                <div class="font-medium truncate text-gray-800">${escapeHtml(t.title)}</div>
+                <div class="text-xs text-red-500">${t.task_date}</div>
+            `;
+
+            left.appendChild(chk);
+            left.appendChild(info);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'text-red-600 hover:text-red-800 text-sm px-2';
+            delBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            delBtn.addEventListener('click', () => deletePendingTask(t.id));
+
+            li.appendChild(left);
+            li.appendChild(delBtn);
+            pendingTasksList.appendChild(li);
+        });
+
+        updatePendingControls();
+    }
+
+    function updatePendingControls() {
+        if (selectedPendingIds.size > 0) {
+            movePendingBtn.classList.remove('hidden');
+            movePendingBtn.textContent = `Move (${selectedPendingIds.size}) to Today`;
+        } else {
+            movePendingBtn.classList.add('hidden');
+        }
+    }
+
+    if (movePendingBtn) {
+        movePendingBtn.addEventListener('click', () => {
+            if (selectedPendingIds.size === 0) return;
+
+            // Calculate todayStr again
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const todayStr = `${y}-${m}-${d}`;
+
+            fetch('/api/tasks/bulk-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ids: Array.from(selectedPendingIds),
+                    updates: { task_date: todayStr }
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) showToast('Failed to move tasks', 'error');
+                    else {
+                        showToast('Tasks moved to today', 'success');
+                        selectedPendingIds.clear();
+                        loadTasks();
+                    }
+                })
+                .catch(err => { console.error(err); showToast('Network error', 'error'); });
+        });
+    }
+
+    let pendingTaskDeleteId = null;
+    const deletePendingTaskModal = document.getElementById('deletePendingTaskModal');
+    const cancelDeletePendingBtn = document.getElementById('cancelDeletePendingTaskBtn');
+    const confirmDeletePendingBtn = document.getElementById('confirmDeletePendingTaskBtn');
+
+    function deletePendingTask(id) {
+        if (!deletePendingTaskModal) return;
+        pendingTaskDeleteId = id;
+        deletePendingTaskModal.classList.remove('hidden');
+    }
+
+    function closeDeletePendingModal() {
+        if (!deletePendingTaskModal) return;
+        deletePendingTaskModal.classList.add('hidden');
+        pendingTaskDeleteId = null;
+    }
+
+    if (cancelDeletePendingBtn) cancelDeletePendingBtn.addEventListener('click', (e) => { e.preventDefault(); closeDeletePendingModal(); });
+
+    if (confirmDeletePendingBtn) confirmDeletePendingBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!pendingTaskDeleteId) { closeDeletePendingModal(); return; }
+
+        fetch(`/api/tasks/${pendingTaskDeleteId}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(() => {
+                showToast('Task deleted', 'success');
+                if (selectedPendingIds.has(pendingTaskDeleteId)) selectedPendingIds.delete(pendingTaskDeleteId);
+                loadTasks();
+                closeDeletePendingModal();
+            }).catch(err => { console.error(err); showToast('Error deleting task', 'error'); closeDeletePendingModal(); });
+    });
+
+    // --- EXTEND LOAD TASKS ---
+    // Modify existing loadTasks to call renderPendingTasks
+
 
     // --- INIT ---
     renderCalendar(currentDate);

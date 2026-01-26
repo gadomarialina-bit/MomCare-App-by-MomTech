@@ -799,19 +799,24 @@ def dashboard():
     cleanup_old_tasks(user_email)
 
     # Load tasks for display (all pending tasks)
+    # Load tasks for display (ONLY tasks for today)
     today_iso = datetime.now().strftime('%Y-%m-%d')
-    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND completed = 0 ORDER BY task_date ASC, start_time ASC', (user_email,))
+    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND task_date = ? ORDER BY start_time ASC', (user_email, today_iso))
     rows = cur.fetchall()
     tasks = [dict(r) for r in rows]
     
-    # Calculate pending count from all incomplete tasks
-    pending_count = len(tasks)
+    # Calculate pending count from today's tasks (or should it be all pending? User asked for "show task of current date", usually context implies list view)
+    # If we want pending count badge to show ALL pending work, we need a separate query. 
+    # But usually dashboard summary matches the list. Let's stick to today's pending count for the snapshot box for consistency with the list.
+    pending_count = len([t for t in tasks if not t['completed']])
 
-    # Calculate Progress based ONLY on today's tasks (for accurate 0-100% display)
-    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND task_date = ?', (user_email, today_iso))
-    today_tasks = cur.fetchall()
-    total_today = len(today_tasks)
-    done_today = len([t for t in today_tasks if t['completed']])
+    # Calculate overdue count (tasks from previous days that are not completed)
+    cur.execute('SELECT COUNT(*) FROM tasks WHERE user_email = ? AND completed = 0 AND task_date < ?', (user_email, today_iso))
+    overdue_count = cur.fetchone()[0]
+
+    # Calculate Progress based on today's tasks
+    total_today = len(tasks)
+    done_today = total_today - pending_count
     progress_percentage = int((done_today / total_today) * 100) if total_today > 0 else 0
 
     # 1. Budget Settings (Fallback)
@@ -880,14 +885,15 @@ def dashboard():
         cur.execute('SELECT title, remind_at FROM reminder_items WHERE user_email = ? AND remind_at IS NOT NULL ORDER BY remind_at ASC', (user_email,))
         all_reminders = cur.fetchall()
         
-        now_dt = datetime.now()
-        limit_dt = now_dt + timedelta(days=2)
+        now_date = datetime.now().date()
+        limit_date = now_date + timedelta(days=2)
         
         for r in all_reminders:
             try:
                 # remind_at is stored as ISO string, e.g., "2023-10-27T14:30"
                 r_dt = datetime.fromisoformat(r['remind_at'])
-                if now_dt <= r_dt <= limit_dt:
+                r_date = r_dt.date()
+                if now_date <= r_date <= limit_date:
                     # Format for display: "Oct 27, 2:30 PM"
                     display_time = r_dt.strftime('%b %d, %I:%M %p')
                     upcoming_reminders.append({'title': r['title'], 'time': display_time})
@@ -914,7 +920,8 @@ def dashboard():
                            budget_color=budget_color,
                            budget_icon=budget_icon,
                            mood_data=mood_data,
-                           upcoming_reminders=upcoming_reminders)
+                           upcoming_reminders=upcoming_reminders,
+                           overdue_count=overdue_count)
 
 # JSON API endpoints for client-side integration
 @app.route('/api/tasks', methods=['GET'])
@@ -929,7 +936,7 @@ def api_get_tasks():
     conn = get_db()
     cur = conn.cursor()
     today_iso = datetime.now().strftime('%Y-%m-%d')
-    cur.execute('SELECT * FROM tasks WHERE user_email = ? AND (completed = 0 OR task_date = ?) ORDER BY task_date ASC, start_time ASC', (user_email, today_iso))
+    cur.execute('SELECT * FROM tasks WHERE user_email = ? ORDER BY task_date ASC, start_time ASC', (user_email,))
     rows = cur.fetchall()
     tasks = []
     for r in rows:
@@ -1053,6 +1060,78 @@ def api_delete_task(task_id):
     cur = conn.cursor()
     cur.execute('DELETE FROM tasks WHERE id = ? AND user_email = ?', (task_id, user_email))
     conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/tasks/bulk-delete', methods=['POST'])
+def api_bulk_delete_tasks():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
+
+    if not ids:
+        return jsonify({'ok': True}) # Nothing to do
+
+    conn = get_db()
+    cur = conn.cursor()
+    # Use execute many or IN clause. IN clause is simpler for list of IDs.
+    # Verify ownership implicitly by user_email
+    try:
+        placeholder = ','.join('?' for _ in ids)
+        sql = f'DELETE FROM tasks WHERE id IN ({placeholder}) AND user_email = ?'
+        params = list(ids) + [user_email]
+        cur.execute(sql, params)
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': 'delete failed'}), 500
+        
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/tasks/bulk-update', methods=['POST'])
+def api_bulk_update_tasks():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'unauthenticated'}), 401
+
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
+    updates = data.get('updates', {})
+
+    if not ids or not updates:
+        return jsonify({'ok': True}) # Nothing to do
+
+    allowed_fields = ['task_date', 'completed', 'color', 'is_priority']
+    filtered_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+    
+    if not filtered_updates:
+        return jsonify({'error': 'no valid fields to update'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    
+    try:
+        # Construct SET clause dynamically
+        set_clause = ', '.join([f"{k} = ?" for k in filtered_updates.keys()])
+        values = list(filtered_updates.values())
+        
+        # Add IDs and email to params
+        placeholder = ','.join('?' for _ in ids)
+        sql = f'UPDATE tasks SET {set_clause} WHERE id IN ({placeholder}) AND user_email = ?'
+        params = values + list(ids) + [user_email]
+        
+        cur.execute(sql, params)
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': 'update failed'}), 500
+        
     conn.close()
     return jsonify({'ok': True})
 
