@@ -45,7 +45,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Happy')">
                                     <div
-                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#5cb85c] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#00e676] mb-2 mx-auto">
                                         <i class="far fa-smile"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Happy</p>
@@ -53,7 +53,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Neutral')">
                                     <div
-                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#5bc0de] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#00b0ff] mb-2 mx-auto">
                                         <i class="far fa-meh"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Neutral</p>
@@ -61,7 +61,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Tired')">
                                     <div
-                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#d9534f] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#ffc400] mb-2 mx-auto">
                                         <i class="far fa-frown"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Tired</p>
@@ -69,7 +69,7 @@
                                 <div class="cursor-pointer transition-transform hover:scale-110"
                                     onclick="submitMood('Stressed')">
                                     <div
-                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#333] mb-2 mx-auto">
+                                        class="w-[65px] h-[65px] rounded-full flex items-center justify-center text-4xl text-[#ff1744] mb-2 mx-auto">
                                         <i class="far fa-tired"></i>
                                     </div>
                                     <p class="text-sm font-bold m-0">Stressed</p>
@@ -127,7 +127,8 @@
                         <label class="text-xs font-bold block mb-2">Stress Level</label>
                         <input type="range" id="stressSlider" min="1" max="10"
                             value="{{ data.stress if data and data.stress else 5 }}"
-                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#5a8d26]">
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none pointer-events-none accent-[#5a8d26]"
+                            tabindex="-1">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
                             <span>Low</span><span>Neutral</span><span>High</span>
                         </div>
@@ -176,6 +177,44 @@
         let currentSleep = parseFloat(wellnessDataEl.dataset.sleep);
         let currentActivity = wellnessDataEl.dataset.activity;
         let moodChart; // Global chart instance for updates
+
+        const moodColorMap = {
+            0: '#ff1744', // Stressed
+            1: '#ffc400', // Tired
+            2: '#00b0ff', // Neutral
+            3: '#00e676'  // Happy
+        };
+
+        const getMoodColors = (scores) => scores.map(score => moodColorMap[score] || '#5a8d26');
+
+        const highlightColorMap = {
+            'Happy': 'rgba(0, 230, 118, 0.2)',
+            'Neutral': 'rgba(0, 176, 255, 0.2)',
+            'Tired': 'rgba(255, 196, 0, 0.2)',
+            'Stressed': 'rgba(255, 23, 68, 0.2)'
+        };
+
+        function updateIconHighlights(selectedVal) {
+            document.querySelectorAll('[data-mood]').forEach(el => {
+                const mood = el.getAttribute('data-mood');
+                const iconContainer = el.querySelector('div');
+                if (mood === selectedVal) {
+                    el.style.opacity = '1';
+                    el.style.transform = 'scale(1.1)';
+                    if (iconContainer) {
+                        iconContainer.style.backgroundColor = highlightColorMap[mood];
+                        iconContainer.style.boxShadow = `0 0 15px ${highlightColorMap[mood]}`;
+                    }
+                } else {
+                    el.style.opacity = '0.6';
+                    el.style.transform = 'scale(1)';
+                    if (iconContainer) {
+                        iconContainer.style.backgroundColor = 'transparent';
+                        iconContainer.style.boxShadow = 'none';
+                    }
+                }
+            });
+        }
 
         function showToast() {
             const toast = document.getElementById('toast');
@@ -310,14 +349,7 @@
 
         async function submitMood(val) {
             // Visual feedback on selection
-            document.querySelectorAll('[data-mood]').forEach(el => {
-                el.style.opacity = '0.6';
-            });
-
-            const selected = document.querySelector(`[data-mood="${val}"]`);
-            if (selected) {
-                selected.style.opacity = '1';
-            }
+            updateIconHighlights(val);
 
             // Connect to stress slider
             const slider = document.getElementById('stressSlider');
@@ -352,6 +384,7 @@
                         // Dynamically update the weekly chart if new data is provided
                         if (result.week_data && moodChart) {
                             moodChart.data.datasets[0].data = result.week_data;
+                            moodChart.data.datasets[0].backgroundColor = getMoodColors(result.week_data);
                             moodChart.update();
                         }
                     }
@@ -526,22 +559,9 @@
 
             // Re-apply selection state if we have a selectedMood
             if (selectedMood) {
-                document.querySelectorAll('[data-mood]').forEach(el => {
-                    el.style.opacity = '0.6';
-                    el.style.transition = 'opacity 0.3s ease';
-                    el.style.cursor = 'pointer';
-                });
-                const selected = document.querySelector(`[data-mood="${selectedMood}"]`);
-                if (selected) {
-                    selected.style.opacity = '1';
-                }
+                updateIconHighlights(selectedMood);
             } else {
-                // If no selectedMood, ensure all are at default opacity and have transition/cursor
-                document.querySelectorAll('[data-mood]').forEach(el => {
-                    el.style.opacity = '0.6';
-                    el.style.transition = 'opacity 0.3s ease';
-                    el.style.cursor = 'pointer';
-                });
+                updateIconHighlights(null);
             }
 
             // Stress slider interactivity
@@ -612,8 +632,8 @@
                         datasets: [{
                             label: 'Mood Score',
                             data: weekData,
-                            backgroundColor: '#90b17b',
-                            borderColor: '#5a8254',
+                            backgroundColor: getMoodColors(weekData),
+                            borderColor: 'transparent',
                             borderWidth: 1,
                             borderRadius: 4
                         }]
@@ -697,10 +717,10 @@
                     <label for="waterGlasses" class="block text-sm font-bold text-[#104b0b] mb-2">
                         <i class="fas fa-glass-whiskey mr-2"></i>Glasses of Water
                     </label>
-                    <input type="number" id="waterGlasses" name="waterGlasses" min="0" max="12" step="0.5"
+                    <input type="number" id="waterGlasses" name="waterGlasses" min="0" max="8" step="0.5"
                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#5a8d26] focus:outline-none text-lg font-semibold text-center"
                         placeholder="8" required>
-                    <p class="text-xs text-gray-500 mt-1 text-center">Enter glasses between 0-12</p>
+                    <p class="text-xs text-gray-500 mt-1 text-center">Enter glasses between 0-8</p>
                 </div>
 
                 <!-- Action Buttons -->
