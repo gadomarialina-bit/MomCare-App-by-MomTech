@@ -202,15 +202,23 @@
     <!-- SNAPSHOT BOXES -->
     <div class="w-[85%] mx-auto bg-white mt-4 p-10 rounded-xl shadow-sm md:w-[85%]">
         <strong class="text-xl">Today's Snapshot:</strong>
+        <p class="mt-4 text-gray-600 leading-relaxed">
+            You have <span class="font-bold text-[#5a8d26]">{{ pending_count }}</span> pending tasks,
+            <span class="font-bold {% if remaining_budget < 0 %}text-red-500{% else %}text-green-600{% endif %}">₱{{
+                "{:,.2f}".format(remaining_budget) }}</span>
+            remaining in your budget, and you're feeling <span class="font-bold text-[#5a8d26]">{{ mood_data.mood if
+                mood_data else 'Neutral' }}</span>.
+        </p>
     </div>
 
     <div
         class="w-[85%] mx-auto bg-white mt-4 mb-12 p-10 rounded-xl shadow-sm flex flex-col md:flex-row justify-between text-xl gap-4 md:gap-0 md:w-[85%]">
-        <span id="snapshotPendingTasks">Task: {{ pending_count }} Pending</span>
+        <span id="snapshotPendingTasks">Task: <span class="font-bold text-[#5a8d26]">{{ pending_count }}
+                Pending</span></span>
         <span id="snapshotBudgetRemaining">Budget:
             <span class="{% if remaining_budget < 0 %}text-red-500{% else %}text-green-600{% endif %} font-bold">
-                ₱{{ "{:,.2f}".format(remaining_budget) }}
-            </span> remaining
+                ₱{{ "{:,.2f}".format(remaining_budget) }} remaining
+            </span>
         </span>
         <span id="snapshotMood">Mood: <span class="font-bold text-[#5a8d26]">{{ mood_data.mood if mood_data else
                 'Neutral' }}</span></span>
