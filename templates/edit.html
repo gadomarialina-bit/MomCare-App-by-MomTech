@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,7 @@
 
     <style>
         /* Specific styles for edit form */
-.profile-container {
+        .profile-container {
             width: 90%;
             max-width: 800px;
             background: white;
@@ -22,7 +23,7 @@
         }
 
         .profile-header {
-            background: linear-gradient(135deg, #0b3f0a, #5a8d26);
+            background: #104b0b;
             color: white;
             padding: 20px;
             text-align: center;
@@ -127,10 +128,9 @@
         .cancel-btn:hover {
             background-color: #4b5563;
         }
-
-
     </style>
 </head>
+
 <body class="bg-[#a7d8e5] font-['Poppins']">
     {% include 'navbar.html' %}
 
@@ -140,89 +140,94 @@
 
         <div class="profile-content">
             <form method="POST" action="{{ url_for('edit_profile', user_id=user.id) }}" enctype="multipart/form-data">
-            
-            <div class="detail-row">
-                <label for="first_name">First Name</label>
-                <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
-            </div>
-            
-            <div class="detail-row">
-                <label for="last_name">Last Name</label>
-                <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
-            </div>
-            
-            <div class="detail-row">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="{{ user.email or '' }}" required>
-            </div>
-            
-            <div class="detail-row">
-                <label for="birthdate">Birth Date</label>
-                <input type="date" id="birthdate" name="birthdate" value="{{ user.birthdate or '' }}">
-            </div>
-            
-            <div class="detail-row">
-                <label for="gender">Gender</label>
-                <select id="gender" name="gender">
-                    <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
-                    <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
-                    <option value="Not Specified" {% if user.gender == 'Not Specified' or not user.gender %}selected{% endif %}>Not Specified</option>
-                </select>
-            </div>
-            
-            <div class="detail-row">
-                <label for="height">Height (cm)</label>
-                <input type="number" id="height" name="height" value="{{ user.height or '' }}">
-            </div>
-            
-            <div class="detail-row">
-                <label for="weight">Weight (kg)</label>
-                <input type="number" id="weight" name="weight" value="{{ user.weight or '' }}">
-            </div>
 
-            <!-- Profile Picture Upload -->
-            <div class="profile-photo">
-                <img id="profile-preview" src="{{ url_for('static', filename=user.profile_picture) if user.profile_picture else url_for('static', filename='images/default-avatar.png') }}" alt="Profile Picture">
-                <label for="profile_picture" class="upload-label">Click to upload new picture</label>
-                <input type="file" id="profile_picture" name="profile_picture" accept="image/*" style="display: none;">
-            </div>
+                <div class="detail-row">
+                    <label for="first_name">First Name</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" required>
+                </div>
 
-            <div class="btn-row">
-                <button class="save-btn" type="submit">Save</button>
-                <a href="{{ url_for('profile', user_id=user.id) }}">
-                    <button type="button" class="cancel-btn">Cancel</button>
-                </a>
-            </div>
-            
+                <div class="detail-row">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" required>
+                </div>
+
+                <div class="detail-row">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" value="{{ user.email or '' }}" required>
+                </div>
+
+                <div class="detail-row">
+                    <label for="birthdate">Birth Date</label>
+                    <input type="date" id="birthdate" name="birthdate" value="{{ user.birthdate or '' }}">
+                </div>
+
+                <div class="detail-row">
+                    <label for="gender">Gender</label>
+                    <select id="gender" name="gender">
+                        <option value="Male" {% if user.gender=='Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if user.gender=='Female' %}selected{% endif %}>Female</option>
+                        <option value="Not Specified" {% if user.gender=='Not Specified' or not user.gender %}selected{%
+                            endif %}>Not Specified</option>
+                    </select>
+                </div>
+
+                <div class="detail-row">
+                    <label for="height">Height (cm)</label>
+                    <input type="number" id="height" name="height" value="{{ user.height or '' }}">
+                </div>
+
+                <div class="detail-row">
+                    <label for="weight">Weight (kg)</label>
+                    <input type="number" id="weight" name="weight" value="{{ user.weight or '' }}">
+                </div>
+
+                <!-- Profile Picture Upload -->
+                <div class="profile-photo">
+                    <img id="profile-preview"
+                        src="{{ url_for('static', filename=user.profile_picture) if user.profile_picture else url_for('static', filename='images/default-avatar.png') }}"
+                        alt="Profile Picture">
+                    <label for="profile_picture" class="upload-label">Click to upload new picture</label>
+                    <input type="file" id="profile_picture" name="profile_picture" accept="image/*"
+                        style="display: none;">
+                </div>
+
+                <div class="btn-row">
+                    <button class="save-btn" type="submit">Save</button>
+                    <a href="{{ url_for('profile', user_id=user.id) }}">
+                        <button type="button" class="cancel-btn">Cancel</button>
+                    </a>
+                </div>
+
             </form>
         </div>
     </div>
 
-<script>
-function toggleMenu() {
-    let menu = document.getElementById("menuDropdown");
-    menu.style.display = (menu.style.display === "block") ? "none" : "block";
-}
+    <script>
+        function toggleMenu() {
+            let menu = document.getElementById("menuDropdown");
+            menu.style.display = (menu.style.display === "block") ? "none" : "block";
+        }
 
-window.onclick = function(event) {
-    let menu = document.getElementById("menuDropdown");
-    if (!event.target.matches('.menu-btn')) {
-        menu.style.display = "none";
-    }
-}
+        window.onclick = function (event) {
+            let menu = document.getElementById("menuDropdown");
+            if (!event.target.matches('.menu-btn')) {
+                menu.style.display = "none";
+            }
+        }
 
-// Profile picture preview
-document.getElementById('profile_picture').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('profile-preview').src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-});
-</script>
+        // Profile picture preview
+        document.getElementById('profile_picture').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('profile-preview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
 
 </body>
+
 </html>

@@ -460,8 +460,7 @@ def signup():
             session['user_id'] = user_id
             session['user_email'] = email
             session['user_first'] = first
-            flash('Account created successfully!')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('dashboard', account_created='true'))
         except Exception as e:
             print(f"Error setting session: {e}")
             flash('Account created, but please log in.')
@@ -704,8 +703,7 @@ def verify_security_answer():
     conn.commit()
     conn.close()
   
-    flash('Password reset successfully! Please log in with your new password.')
-    return redirect(url_for('index'))
+    return redirect(url_for('index', reset_success='true'))
 
 
 def get_mood_wellness_data(user_email: str):
@@ -887,8 +885,8 @@ def dashboard():
             income = latest_row['income']
             budget_limit = latest_row['budget_limit']
         else:
-            income = 160000
-            budget_limit = 160000
+            income = 0
+            budget_limit = 0
 
     # 2. Daily Spend
     cur.execute('SELECT amount FROM expenses WHERE user_email = ? AND expense_date = ?', (user_email, today_iso))
@@ -941,7 +939,11 @@ def dashboard():
         budget_color = "red"
         budget_icon = "fa-exclamation-circle"
 
-    remaining_budget = income - total_spent_month
+    remaining_budget = budget_limit - total_spent_month
+    
+    budget_percent = 0
+    if budget_limit > 0:
+        budget_percent = (total_spent_month / budget_limit) * 100
     # 4. Upcoming Reminders (Next 2 days)
     upcoming_reminders = []
     try:
@@ -984,7 +986,8 @@ def dashboard():
                            budget_icon=budget_icon,
                            mood_data=mood_data,
                            upcoming_reminders=upcoming_reminders,
-                           overdue_count=overdue_count)
+                           overdue_count=overdue_count,
+                           budget_percent=budget_percent)
 
 # JSON API endpoints for client-side integration
 @app.route('/api/tasks', methods=['GET'])
@@ -1394,8 +1397,8 @@ def budgetexpenses():
         if latest_row:
             budget_data = {'income': latest_row['income'], 'budget_limit': latest_row['budget_limit']}
         else:
-            # Default values matching budget.html JS
-            budget_data = {'income': 160000, 'budget_limit': 160000}
+            # Default values for new users - starts at 0
+            budget_data = {'income': 0, 'budget_limit': 0}
 
     # 2. Expenses List
     cur.execute('SELECT * FROM expenses WHERE user_email = ? AND month_iso = ? ORDER BY expense_date DESC, created_at DESC', (user_email, selected_month_iso))
@@ -1451,7 +1454,8 @@ def budgetexpenses():
                         groceries=groceries,
                         db_categories=db_categories,
                         total_spent=total_spent,
-                        total_spent_today=total_spent_today)
+                        total_spent_today=total_spent_today,
+                        user_email=user_email)
 
 
 
@@ -1573,7 +1577,6 @@ def logout():
     session.pop('user_first', None)
     session.pop('user_email', None) # Ensure email is also popped
     session.pop('user_id', None)
-    flash('You have been signed out.')
     return redirect(url_for('index'))
 
 

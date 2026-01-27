@@ -20,7 +20,7 @@
 
   {% include 'navbar.html' %}
 
-  <main class="max-w-[1400px] mx-auto p-6 md:p-10">
+  <main class="max-w-[1300px] mx-auto p-6 md:p-10">
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -66,14 +66,14 @@
           <div class="flex justify-between mb-3 text-[15px]">
             <div class="font-medium">Monthly Income</div>
             <div>
-              <input type="number" id="incomeInput" value="160000" min="0"
+              <input type="number" id="incomeInput" value="0" min="0"
                 class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
             </div>
           </div>
           <div class="flex justify-between mb-3 text-[15px]">
             <div class="font-medium">Monthly Budget Limit</div>
             <div>
-              <input type="number" id="budgetInput" value="160000" min="0"
+              <input type="number" id="budgetInput" value="0" min="0"
                 class="border border-gray-300 rounded px-2 py-1 w-36 text-sm">
             </div>
           </div>
@@ -91,9 +91,19 @@
 
           <div id="categorySummary" class="text-[13px] my-2 max-h-[80px] overflow-y-auto pr-1"></div>
 
-          <div class="flex justify-between mt-2 font-medium text-[#0e4f23]">
-            <div id="budgetUsedLabel">0% Budget Used</div>
-            <div id="remainingDisplay">Remaining: ₱ 0.00</div>
+          <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+            <!-- Left Side: Status -->
+            <div id="budgetUsedLabel" class="text-base flex items-center">
+              0% Budget Used
+            </div>
+
+            <!-- Right Side: Financials -->
+            <div class="text-right flex flex-col gap-1">
+              <p class="text-sm text-gray-400 m-0" id="remainingDisplay">Remaining Balance: ₱0.00</p>
+              <p class="text-sm text-gray-500 m-0">
+                Allocated Savings: <span id="allocatedSavingsDisplay" class="font-bold text-[#5a8d26]">₱0.00</span>
+              </p>
+            </div>
           </div>
 
         </div>
@@ -104,13 +114,15 @@
         <div class="bg-[#f9a825] text-white p-4 font-semibold text-lg">Spending Category</div>
 
         <!-- Chart + Category List -->
-        <div class="p-6 flex flex-col md:flex-row items-center justify-center gap-8">
-          <div class="relative w-[200px] h-[200px] shrink-0">
-            <canvas id="pieChart" width="200" height="200"
-              class="rounded-full shadow-[0_0_0_8px_#f1f8e9] bg-white"></canvas>
+        <div class="px-4 pt-12 pb-4 flex justify-center">
+          <div class="flex flex-col md:flex-row items-center gap-8">
+            <div class="relative w-[250px] h-[250px] shrink-0">
+              <canvas id="pieChart" width="250" height="250"
+                class="rounded-full shadow-[0_0_0_8px_#f1f8e9] bg-white"></canvas>
+            </div>
+            <!-- Category breakdown with scrollable list showing max 8 items -->
+            <div class="w-full max-w-[320px] max-h-[250px] overflow-y-auto pr-2" id="categoryList"></div>
           </div>
-          <!-- Category breakdown with scrollable list showing max 8 items -->
-          <div class="flex-1 w-full max-w-[320px] max-h-[240px] overflow-y-auto pr-2" id="categoryList"></div>
         </div>
       </section>
 
@@ -385,7 +397,9 @@
       categoryColors[c.name] = c.color;
     });
 
-    const STORE_KEY = "momcare_budget_v1";
+    // Make localStorage key user-specific to prevent data sharing between accounts
+    const userEmail = {{ user_email | tojson | safe }};
+    const STORE_KEY = `momcare_budget_v1_${userEmail}`;
 
     // ---- Custom Month Picker Logic ----
     (function () {
@@ -554,7 +568,7 @@
     function ensureMonth(store, monthIso) {
       if (!store.months[monthIso]) {
         store.months[monthIso] = {
-          settings: { income: 160000, budget_limit: 160000 },
+          settings: { income: 0, budget_limit: 0 },
           expenses: [],
           groceries: [],
           drafts: {
@@ -563,7 +577,7 @@
           }
         };
       } else {
-        store.months[monthIso].settings = store.months[monthIso].settings || { income: 160000, budget_limit: 160000 };
+        store.months[monthIso].settings = store.months[monthIso].settings || { income: 0, budget_limit: 0 };
         store.months[monthIso].expenses = store.months[monthIso].expenses || [];
         store.months[monthIso].groceries = store.months[monthIso].groceries || [];
         store.months[monthIso].drafts = store.months[monthIso].drafts || {
@@ -969,7 +983,10 @@
       document.getElementById("totalSpentDisplay").textContent = formatCurrency(TOTAL_SPENT);
 
       let displayPercent = 0;
-      if (monthlyIncome > 0) displayPercent = (TOTAL_SPENT / monthlyIncome) * 100;
+      if (budgetLimit > 0) {
+        displayPercent = (TOTAL_SPENT / budgetLimit) * 100;
+        // Cap visual percent at 100 for display if needed, but user usually wants to see overage
+      }
 
       // Alert based on Budget Limit
       let alertPercent = 0;
@@ -994,8 +1011,14 @@
 
       labelEl.innerHTML = `${icon} <span class="${colorClass} font-bold">${displayPercent.toFixed(1)}% Budget Used</span>`;
 
-      const remaining = monthlyIncome - TOTAL_SPENT;
+      const remaining = budgetLimit - TOTAL_SPENT;
       document.getElementById("remainingDisplay").textContent = "Remaining Balance: " + formatCurrency(remaining);
+
+      const allocatedSavings = monthlyIncome - TOTAL_SPENT;
+      const allocDisp = document.getElementById("allocatedSavingsDisplay");
+      if (allocDisp) {
+        allocDisp.textContent = formatCurrency(allocatedSavings);
+      }
 
       // Real-time Top Expense Calculation
       let topCat = "None";
@@ -1357,7 +1380,7 @@
               </select>
             </td>
             <td class="px-6 py-3">
-              <input type="text" id="inlineEditNotes" value="${escapeHtml(exp.notes)}" class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-[#f9a825]">
+              <textarea id="inlineEditNotes" rows="2" class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:border-[#f9a825] resize-y">${escapeHtml(exp.notes)}</textarea>
             </td>
             <td class="px-6 py-3 text-right">
               <input type="number" id="inlineEditAmount" value="${exp.amount}" step="0.01" class="w-full border border-gray-300 rounded px-2 py-1 text-xs text-right focus:border-[#f9a825]">
@@ -1707,8 +1730,8 @@
       // Settings -> inputs
       const incomeInput = document.getElementById("incomeInput");
       const budgetInput = document.getElementById("budgetInput");
-      if (incomeInput) incomeInput.value = monthData.settings.income ?? 160000;
-      if (budgetInput) budgetInput.value = monthData.settings.budget_limit ?? 160000;
+      if (incomeInput) incomeInput.value = monthData.settings.income ?? 0;
+      if (budgetInput) budgetInput.value = monthData.settings.budget_limit ?? 0;
 
       // Groceries table
       renderGroceryList(monthData);
@@ -1937,10 +1960,29 @@
       });
     }
 
+    function handleBudgetEnter(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveSettingsForMonth();
+        updateSummaryUI();
+        e.target.blur();
+      }
+    }
+
     if (incomeInput) {
       incomeInput.addEventListener("change", () => {
         saveSettingsForMonth();
+        updateSummaryUI();
       });
+      incomeInput.addEventListener("keydown", handleBudgetEnter);
+    }
+
+    if (budgetInput) {
+      budgetInput.addEventListener("change", () => {
+        saveSettingsForMonth();
+        updateSummaryUI();
+      });
+      budgetInput.addEventListener("keydown", handleBudgetEnter);
     }
 
     // Draft listeners

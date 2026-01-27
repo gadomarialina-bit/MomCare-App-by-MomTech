@@ -55,7 +55,7 @@
     <div class="main-container">
         {% include 'navbar.html' %}
 
-        <main class="content-area max-w-[1200px] mx-auto p-6 md:p-10 flex gap-6">
+        <main class="content-area max-w-[1300px] mx-auto p-6 md:p-10 flex gap-6">
 
             <div class="sidebar sidebar w-72 flex flex-col gap-4 overflow-y-auto">
 
@@ -119,21 +119,21 @@
                         </div>
                     </div>
 
-                    <ul id="reminderList" class="mt-2 space-y-2"></ul>
+                    <ul id="reminderList" class="mt-2 space-y-2 max-h-[180px] overflow-y-auto"></ul>
                 </div>
 
                 <div class="card priority-card bg-white rounded-xl p-4 shadow">
                     <div class="flex items-center gap-2 font-semibold text-sm">
-                        <i class="fas fa-hand-paper icon-priority text-xl"></i>
-                        <span>Priority</span>
+                        <i class="fas fa-hand-paper icon-priority text-xl text-red-600"></i>
+                        <span class="text-red-600">Priority</span>
                     </div>
                     <ul id="priorityList" class="mt-2 text-sm list-none p-0 m-0"></ul>
                 </div>
 
 
-                <div class="card done-list-card bg-white rounded-xl p-3 shadow mt-2">
+                <div class="card done-list-card bg-white rounded-xl p-3 shadow">
                     <h5 class="font-semibold text-sm mb-2">Completed Today</h5>
-                    <ul id="doneList" class="text-sm list-none p-0 m-0 space-y-2">
+                    <ul id="doneList" class="text-sm list-none p-0 m-0 space-y-2 max-h-[210px] overflow-y-auto">
                         <!-- Completed tasks for selected date will appear here -->
                     </ul>
 
@@ -145,7 +145,7 @@
 
             <div class="schedule-area flex-1 bg-white rounded-xl p-6 shadow relative overflow-hidden">
                 <div class="schedule-header text-lg font-bold text-[#104b0b] mb-4">Schedule</div>
-                <div class="timeline relative overflow-y-auto pl-16 max-h-[1020px]" id="timelineGrid">
+                <div class="timeline relative overflow-y-auto pl-16 max-h-[630px]" id="timelineGrid">
                 </div>
             </div>
 
@@ -190,6 +190,27 @@
                 <button id="cancelDeleteReminderBtn"
                     class="px-3 py-1 rounded-md bg-gray-200 text-gray-700">Cancel</button>
                 <button id="confirmDeleteReminderBtn" class="px-3 py-1 rounded-md bg-red-600 text-white">Delete</button>
+            </div>
+        </div>
+    </div>
+    <!-- Custom Confirmation Modal for Completion -->
+    <div id="confirmTaskDoneModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 w-80 shadow-2xl text-center transform transition-all">
+            <div
+                class="w-16 h-16 bg-green-100 text-[#5a8d26] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#104b0b]">Well done!</h3>
+            <p class="text-sm text-gray-600 mt-2">Are you sure you want to mark this task as complete?</p>
+            <div class="flex flex-col gap-3 mt-6">
+                <button id="confirmTaskDoneModalBtn"
+                    class="w-full py-3 rounded-xl bg-[#5a8d26] text-white font-bold hover:opacity-90 transition-opacity">
+                    Yes, mark it done!
+                </button>
+                <button id="cancelTaskDoneModalBtn"
+                    class="w-full py-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                    Not yet
+                </button>
             </div>
         </div>
     </div>

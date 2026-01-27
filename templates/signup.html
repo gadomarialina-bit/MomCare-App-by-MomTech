@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Create MomCare Account</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
 </head>
 
@@ -115,7 +116,11 @@
                   <path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z" />
                 </svg>
                 <input id="password" name="password" type="password" placeholder="Password"
-                  class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+                  class="flex-1 bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+                <button type="button" onclick="togglePassword('password', 'eyePassword')"
+                  class="ml-2 text-[#fa990e] focus:outline-none">
+                  <i id="eyePassword" class="fas fa-eye"></i>
+                </button>
               </div>
             </div>
 
@@ -128,7 +133,11 @@
                   <path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z" />
                 </svg>
                 <input id="confirm" name="confirm" type="password" placeholder="Confirm Password"
-                  class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+                  class="flex-1 bg-transparent text-[#104b0b] placeholder:text-[#104b0b]/50 outline-none" />
+                <button type="button" onclick="togglePassword('confirm', 'eyeConfirm')"
+                  class="ml-2 text-[#fa990e] focus:outline-none">
+                  <i id="eyeConfirm" class="fas fa-eye"></i>
+                </button>
               </div>
             </div>
 
@@ -174,6 +183,23 @@
 
     </div>
   </main>
+
+  <script>
+    function togglePassword(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+  </script>
 
 </body>
 

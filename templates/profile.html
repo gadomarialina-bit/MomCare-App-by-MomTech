@@ -12,17 +12,16 @@
     <style>
         /* Specific styles for profile card */
         .profile-container {
-            width: 90%;
+            width: 100%;
             max-width: 800px;
             background: white;
-            margin: 40px auto;
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .profile-header {
-            background: linear-gradient(135deg, #0b3f0a, #5a8d26);
+            background: #104b0b;
             color: white;
             padding: 20px;
             text-align: center;
@@ -99,54 +98,57 @@
 <body class="bg-[#a7d8e5] font-['Poppins']">
     {% include 'navbar.html' %}
 
-    <!-- PROFILE CARD -->
-    <div class="profile-container">
-        <div class="profile-header">Profile</div>
+    <main class="max-w-[1300px] mx-auto p-6 md:p-10">
+        <!-- PROFILE CARD -->
+        <div class="profile-container mx-auto">
+            <div class="profile-header">Profile</div>
 
-        <div class="profile-content">
-            <!-- Profile Picture -->
-            <div class="profile-photo">
-                <img src="{% if user.profile_pic_url %}{{ user.profile_pic_url }}{% else %}{{ url_for('static', filename='images/default-avatar.png') }}{% endif %}" alt="Profile Picture">
+            <div class="profile-content">
+                <!-- Profile Picture -->
+                <div class="profile-photo">
+                    <img src="{% if user.profile_pic_url %}{{ user.profile_pic_url }}{% else %}{{ url_for('static', filename='images/default-avatar.png') }}{% endif %}"
+                        alt="Profile Picture">
+                </div>
+
+                <div class="name">{{ user.first_name }} {{ user.last_name }}</div>
+
+                <div class="detail-row">
+                    <label>Email:</label>
+                    <div class="value">{{ user.email }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <label>Birth Date:</label>
+                    <div class="value">{{ user.birthdate_display }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <label>Gender:</label>
+                    <div class="value">{{ user.gender }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <label>Height:</label>
+                    <div class="value">{{ user.height_display }} cm</div>
+                </div>
+
+                <div class="detail-row">
+                    <label>Weight:</label>
+                    <div class="value">{{ user.weight_display }} kg</div>
+                </div>
+
+                <div class="detail-row">
+                    <label>Password:</label>
+                    <div class="value">{{ user.password_display }}</div>
+                </div>
+
+                <!-- EDIT BUTTON -->
+                <a href="{{ url_for('edit_profile', user_id=user['id']) }}" class="no-underline">
+                    <button type="button" class="edit-btn">Edit</button>
+                </a>
             </div>
-
-            <div class="name">{{ user.first_name }} {{ user.last_name }}</div>
-
-            <div class="detail-row">
-                <label>Email:</label>
-                <div class="value">{{ user.email }}</div>
-            </div>
-
-            <div class="detail-row">
-                <label>Birth Date:</label>
-                <div class="value">{{ user.birthdate_display }}</div>
-            </div>
-
-            <div class="detail-row">
-                <label>Gender:</label>
-                <div class="value">{{ user.gender }}</div>
-            </div>
-
-            <div class="detail-row">
-                <label>Height:</label>
-                <div class="value">{{ user.height_display }} cm</div>
-            </div>
-
-            <div class="detail-row">
-                <label>Weight:</label>
-                <div class="value">{{ user.weight_display }} kg</div>
-            </div>
-
-            <div class="detail-row">
-                <label>Password:</label>
-                <div class="value">{{ user.password_display }}</div>
-            </div>
-
-            <!-- EDIT BUTTON -->
-            <a href="{{ url_for('edit_profile', user_id=user['id']) }}" class="no-underline">
-                <button type="button" class="edit-btn">Edit</button>
-            </a>
         </div>
-    </div>
+    </main>
 
 </body>
 

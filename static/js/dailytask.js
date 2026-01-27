@@ -352,6 +352,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function markTaskDone(id, done) {
+        if (done) {
+            // Show Custom Modal
+            const modal = document.getElementById('confirmTaskDoneModal');
+            modal.classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('confirmTaskDoneModalBtn');
+            const cancelBtn = document.getElementById('cancelTaskDoneModalBtn');
+
+            const onConfirm = () => {
+                modal.classList.add('hidden');
+                cleanup();
+                proceedWithMarkDone(id, true);
+            };
+
+            const onCancel = () => {
+                modal.classList.add('hidden');
+                cleanup();
+            };
+
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+            };
+
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+            return;
+        }
+
+        proceedWithMarkDone(id, false);
+    }
+
+    function proceedWithMarkDone(id, done) {
         fetch(`/api/tasks/${id}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ completed: done })

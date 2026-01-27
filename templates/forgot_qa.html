@@ -1,76 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <title>Answer Security Question - MomCare Balance Life</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.tailwindcss.com"></script>
+  <title>Answer Security Question - MomCare Balance Life</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 
 <body class="h-full">
 
-<div class="min-h-screen flex flex-col justify-center" style="background-color: #a6d6dc;">
-  <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-    <img src="/images/momcare_logo_colored.png" alt="MomCare" class="mx-auto h-24 w-auto" />
-
+  <div class="min-h-screen flex flex-col justify-center" style="background-color: #a6d6dc;">
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-      <div class="rounded-lg px-6 py-8">
-        <h2 class="text-center text-2xl font-bold text-[#104b0b] mb-6">Reset Your Password</h2>
-        
-        {% with messages = get_flashed_messages() %}
+      <img src="{{ url_for('static', filename='images/momcare_logo_colored.png') }}" alt="MomCare"
+        class="mx-auto h-24 w-auto" />
+
+      <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+        <div class="rounded-lg px-6 py-8">
+          <h2 class="text-center text-2xl font-bold text-[#104b0b] mb-6">Reset Your Password</h2>
+
+          {% with messages = get_flashed_messages() %}
           {% if messages %}
-            <div class="mb-4 px-3">
-              {% for msg in messages %}
-                <div class="rounded-md text-red-800 px-3 py-2 mb-2 text-center">{{ msg }}</div>
-              {% endfor %}
-            </div>
+          <div class="mb-4 px-3">
+            {% for msg in messages %}
+            <div class="rounded-md text-red-800 px-3 py-2 mb-2 text-center">{{ msg }}</div>
+            {% endfor %}
+          </div>
           {% endif %}
-        {% endwith %}
+          {% endwith %}
 
-        <div class="mb-4 p-4 bg-white rounded-lg shadow-sm">
-          <p class="text-[#104b0b] font-semibold">Security Question:</p>
-          <p class="text-[#5a8d25]">{{ security_question }}</p>
+          <div class="mb-4 p-4 bg-white rounded-lg shadow-sm">
+            <p class="text-[#104b0b] font-semibold">Security Question:</p>
+            <p class="text-[#5a8d25]">{{ security_question }}</p>
+          </div>
+
+          <form action="/verify-security-answer" method="POST" class="space-y-4">
+            <input type="hidden" name="email" value="{{ email }}">
+
+            <div class="my-4">
+              <label class="sr-only" for="security_answer">Your Answer</label>
+              <div
+                class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
+                </svg>
+                <input id="security_answer" name="security_answer" type="text" required placeholder="Your answer"
+                  class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+              </div>
+            </div>
+
+            <div class="my-4">
+              <label class="sr-only" for="new_password">New Password</label>
+              <div
+                class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z" />
+                </svg>
+                <input id="new_password" name="new_password" type="password" required placeholder="New password"
+                  class="flex-1 bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+                <button type="button" onclick="togglePassword('new_password', 'eyeNewPassword')"
+                  class="ml-2 text-[#fa990e] focus:outline-none">
+                  <i id="eyeNewPassword" class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="my-4">
+              <label class="sr-only" for="confirm_password">Confirm Password</label>
+              <div
+                class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
+                <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  viewBox="0 0 24 24">
+                  <path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z" />
+                </svg>
+                <input id="confirm_password" name="confirm_password" type="password" required
+                  placeholder="Confirm password"
+                  class="flex-1 bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
+                <button type="button" onclick="togglePassword('confirm_password', 'eyeConfirmPassword')"
+                  class="ml-2 text-[#fa990e] focus:outline-none">
+                  <i id="eyeConfirmPassword" class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="my-4">
+              <button type="submit"
+                class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Reset
+                Password</button>
+            </div>
+
+            <div class="text-center text-sm text-[#104b0b]">
+              <a href="/" class="hover:text-[#5a8d25]">Back to login</a>
+            </div>
+          </form>
         </div>
-
-        <form action="/verify-security-answer" method="POST" class="space-y-4">
-          <input type="hidden" name="email" value="{{ email }}">
-
-          <div class="my-4">
-            <label class="sr-only" for="security_answer">Your Answer</label>
-            <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
-              <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
-              <input id="security_answer" name="security_answer" type="text" required placeholder="Your answer" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
-            </div>
-          </div>
-
-          <div class="my-4">
-            <label class="sr-only" for="new_password">New Password</label>
-            <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
-              <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z"/></svg>
-              <input id="new_password" name="new_password" type="password" required placeholder="New password" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
-            </div>
-          </div>
-
-          <div class="my-4">
-            <label class="sr-only" for="confirm_password">Confirm Password</label>
-            <div class="flex items-center bg-white rounded-xl px-4 py-3 shadow-sm hover:ring-2 ring-[#fa990e] focus-within:ring-2 focus-within:ring-[#fa990e]">
-              <svg class="h-6 w-6 text-[#fa990e] mr-3" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8V7a5 5 0 10-10 0v1H5v13h14V8h-2zm-8-1a3 3 0 116 0v1H9V7z"/></svg>
-              <input id="confirm_password" name="confirm_password" type="password" required placeholder="Confirm password" class="w-full bg-transparent text-[#104b0b] placeholder:text-[#104b0b] outline-none" />
-            </div>
-          </div>
-
-          <div class="my-4">
-            <button type="submit" class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-[#5a8d25] bg-[#104b0b]">Reset Password</button>
-          </div>
-
-          <div class="text-center text-sm text-[#104b0b]">
-            <a href="/" class="hover:text-[#5a8d25]">Back to login</a>
-          </div>
-        </form>
       </div>
     </div>
   </div>
-</div>
+
+  <script>
+    function togglePassword(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+  </script>
 
 </body>
+
 </html>

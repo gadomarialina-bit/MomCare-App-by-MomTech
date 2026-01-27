@@ -36,8 +36,7 @@
         <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
           class="h-20 w-auto" />
         <div>
-          <h1 class="text-l lg:text-xl font-bold">Slay your day, {{ first or session.get('user_first') or
-            'User' }}!</h1>
+          <h1 class="text-l lg:text-xl font-bold">Daily Tasks</h1>
           <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
               }}</span></p>
         </div>
@@ -45,11 +44,11 @@
       {% else %}
       <div class="flex items-center gap-6">
         <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-          class="h-16 w-auto" />
+          class="h-20 w-auto" />
         <div>
           <h1 class="text-l lg:text-xl font-bold">How are you today, {{ first or session.get('user_first') or
             'User' }}?</h1>
-          <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
               }}</span></p>
         </div>
       </div>
@@ -106,7 +105,8 @@
           <a href="{{ url_for('mood') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
             <i class="fas fa-heart text-green-900"></i><span>Mood & Wellness</span>
           </a>
-          <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+          <a href="#" onclick="confirmLogout(event)"
+            class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
             <i class="fas fa-sign-out-alt text-green-900"></i><span>Sign out</span>
           </a>
         </nav>
@@ -155,7 +155,41 @@
     });
   }
 
+  // Logout confirmation with custom modal
+  function confirmLogout(event) {
+    event.preventDefault();
+    document.getElementById('logoutModal').classList.remove('hidden');
+  }
 
+  function closeLogoutModal() {
+    document.getElementById('logoutModal').classList.add('hidden');
+  }
 
+  function proceedLogout() {
+    window.location.href = "{{ url_for('logout') }}";
+  }
 
 </script>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] hidden">
+  <div class="bg-white rounded-2xl p-8 w-96 shadow-2xl text-center transform transition-all">
+    <div class="mb-4">
+      <div class="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+        <i class="fas fa-sign-out-alt text-orange-600 text-3xl"></i>
+      </div>
+    </div>
+    <h3 class="text-2xl font-bold text-[#104b0b] mb-2">Sign Out?</h3>
+    <p class="text-gray-600 mb-6">Are you sure you want to sign out?</p>
+    <div class="flex gap-3">
+      <button onclick="closeLogoutModal()"
+        class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+        Cancel
+      </button>
+      <button onclick="proceedLogout()"
+        class="flex-1 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</div>
