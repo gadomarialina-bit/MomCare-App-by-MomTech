@@ -132,10 +132,8 @@
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
                             <span>Low</span><span>Neutral</span><span>High</span>
                         </div>
-                        <p id="stressMessage" class="text-center mt-4 italic text-[#104b0b] font-medium">"{{ 'You\'re
-                            doing okay. Take a breath. ☕' if (data.stress|int > 3 and data.stress|int < 8) else ('Great
-                                job keeping calm! 🌿' if data.stress|int <=3 else 'It\' s okay to pause and breathe.
-                                💛') }}"</p>
+                        <p id="stressMessage" class="text-center mt-4 italic text-[#104b0b] font-medium">"{{
+                            data.wellness_tip if data else 'Take a breath. ☕' }}"</p>
                     </div>
                 </div>
 
@@ -599,9 +597,16 @@
                 } else {
                     tips = stressTipsData.high;
                 }
-                // Deterministic tip selection based on level to avoid jitter
-                // Use level as index (modulo length)
-                return tips[(level - 1) % tips.length];
+
+                // Deterministic selection matching server-side logic:
+                // (level + day_of_year) % length
+                const now = new Date();
+                const start = new Date(now.getFullYear(), 0, 0);
+                const diff = (now - start) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+                const oneDay = 1000 * 60 * 60 * 24;
+                const dayOfYear = Math.floor(diff / oneDay);
+
+                return tips[(level + dayOfYear) % tips.length];
             }
 
             if (stressSlider) {
@@ -613,11 +618,7 @@
                     updateWellness('stress', level);
                 });
 
-                // Initialize on load
-                if (stressMessage) {
-                    const level = parseInt(stressSlider.value);
-                    stressMessage.textContent = `"${getStressTip(level)}"`;
-                }
+                // NO INITIALIZATION HERE - let the server-provided tip stay until user interacts
             }
 
             // Weekly mood chart with real data

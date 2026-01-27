@@ -123,15 +123,32 @@
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
                 <div class="space-y-4">
-                    <p>Monthly Income: <span class="font-bold">₱{{ "{:,.2f}".format(income) }}</span></p>
-                    <p>Total Spent Today:
+                    <p class="flex justify-between items-center">
+                        <span>Monthly Income:</span>
+                        <span class="font-bold">₱{{ "{:,.2f}".format(income) }}</span>
+                    </p>
+                    <p class="flex justify-between items-center">
+                        <span>Spent This Month:</span>
+                        <span class="font-bold text-gray-700">₱{{ "{:,.2f}".format(total_spent_month) }}</span>
+                    </p>
+                    <p class="flex justify-between items-center border-t border-gray-100 pt-2">
+                        <span>Remaining Budget:</span>
                         <span
-                            class="font-bold {% if budget_color == 'red' %}text-red-600{% elif budget_color == 'orange' %}text-orange-500{% else %}text-green-600{% endif %}">
-                            ₱{{ "{:,.2f}".format(total_spent_today) }}
-                            <i class="fas {{ budget_icon }} ml-2"></i>
+                            class="font-bold {% if remaining_budget < 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                            ₱{{ "{:,.2f}".format(remaining_budget) }}
                         </span>
                     </p>
-                    <p>Top Expense: <span class="font-bold">{{ top_expense_category }}</span></p>
+                    <p class="flex justify-between items-center text-sm text-gray-500">
+                        <span>Spent Today:</span>
+                        <span
+                            class="font-medium {% if budget_color == 'red' %}text-red-900{% elif budget_color == 'orange' %}text-orange-900{% else %}text-green-900 bg-green-50 px-2 py-0.5 rounded-full{% endif %}">
+                            ₱{{ "{:,.2f}".format(total_spent_today) }}
+                        </span>
+                    </p>
+                    <p class="text-xs text-gray-500 truncate mt-2">
+                        <i class="fas fa-tag mr-1 text-[#fa990e]"></i> Top Expense: <span
+                            class="font-bold text-gray-700">{{ top_expense_category }}</span>
+                    </p>
                 </div>
                 <a href="{{ url_for('budgetexpenses') }}" class="block w-full md:w-auto mx-auto mt-6">
                     <button
@@ -149,8 +166,21 @@
             </div>
             <div class="p-6 text-base flex flex-col justify-between flex-1">
                 <div class="space-y-4">
-                    <p>Mood Today: <span class="font-bold text-[#5a8d26]">{{ mood_data.mood if mood_data else 'Neutral'
-                            }}</span></p>
+                    <p class="flex items-center gap-2">Mood Today:
+                        <span class="text-2xl">
+                            {% if mood_data.mood == 'Happy' %}
+                            <i class="far fa-smile text-[#00e676]" title="Happy"></i>
+                            {% elif mood_data.mood == 'Neutral' %}
+                            <i class="far fa-meh text-[#00b0ff]" title="Neutral"></i>
+                            {% elif mood_data.mood == 'Tired' %}
+                            <i class="far fa-frown text-[#ffc400]" title="Tired"></i>
+                            {% elif mood_data.mood == 'Stressed' %}
+                            <i class="far fa-tired text-[#ff1744]" title="Stressed"></i>
+                            {% else %}
+                            <i class="far fa-meh text-[#00b0ff]" title="Neutral"></i>
+                            {% endif %}
+                        </span>
+                    </p>
                     <p>Stress Level: <span class="font-bold text-[#5a8d26]">{{ mood_data.stress if mood_data else '5'
                             }}/10</span></p>
                     <p class="font-bold text-[#104b0b]">Wellness Tip for the Day:</p>

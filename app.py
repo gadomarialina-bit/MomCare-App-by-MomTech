@@ -123,8 +123,24 @@ def init_db():
                 cur.execute("ALTER TABLE users ADD COLUMN profile_picture TEXT")
             except Exception:
                 pass
+            try:
+                cur.execute("ALTER TABLE users ADD COLUMN profile_picture TEXT")
+            except Exception:
+                pass
     except Exception:
         # best-effort, proceed without failing init
+        pass
+
+    # Migration for expenses table (is_eco)
+    try:
+        cur.execute("PRAGMA table_info(expenses)")
+        exp_cols = [r[1] for r in cur.fetchall()]
+        if 'is_eco' not in exp_cols:
+            try:
+                cur.execute("ALTER TABLE expenses ADD COLUMN is_eco INTEGER DEFAULT 0")
+            except Exception:
+                pass
+    except Exception:
         pass
   
     # Create monthly_budgets table
@@ -175,6 +191,7 @@ def init_db():
             color TEXT,
             amount REAL NOT NULL DEFAULT 0,
             expense_date TEXT,
+            is_eco INTEGER DEFAULT 0,
             created_at TEXT
         )
         """
@@ -211,6 +228,24 @@ def init_db():
         )
         """
     )
+    
+    # Create spending_categories table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS spending_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            name TEXT NOT NULL,
+            color TEXT NOT NULL,
+            is_default INTEGER DEFAULT 0,
+            created_at TEXT,
+            UNIQUE(user_email, name)
+        )
+        """
+    )
+    
+    # Seed default categories helper (internal check inside init_db if needed)
+    # Note: We'll actually seed them when a user is created or first accesses budget
     # Create reminder_items table for multiple scheduled reminders
     cur.execute(
         """
@@ -727,22 +762,42 @@ def get_mood_wellness_data(user_email: str):
 
     conn.close()
 
-    # Generate Wellness Tip based on most frequent mood
-    if not mood_counts:
-        most_frequent_score = 2
-    else:
-        most_frequent_score = max(mood_counts, key=mood_counts.get)
-        
-    tips_map = {
-        0: ["Take a deep breath. Inhale peace, exhale stress.", "Try a 5-minute meditation session."],
-        1: ["Rest is productive. Get some extra sleep tonight.", "Short naps can boost alertness."],
-        2: ["Stability is good. Keep moving forward.", "A balanced day is a good day."],
-        3: ["Share your positive energy with someone today!", "Keep up the great vibes!"]
+    # Generate Wellness Tip based on TODAY'S stress level
+    stress_val = int(stress)
+    
+    stress_tips = {
+        'low': [
+            "Great job keeping calm! 🌿",
+            "Feeling balanced is a superpower. ✨",
+            "Enjoy this peaceful moment. 🌸",
+            "You're doing great! Keep smiling. 😊"
+        ],
+        'moderate': [
+            "You're doing okay. Take a breath. ☕",
+            "Stay steady, you've got this. 💪",
+            "A short break might help recharge. 🔋",
+            "Keep going, but don't forget to rest. 🛑"
+        ],
+        'high': [
+            "It's okay to pause and breathe. 💛",
+            "Be kind to yourself right now. 🛡️",
+            "One step at a time is enough. 👣",
+            "Take a deep breath. You are strong. 🌟"
+        ]
     }
     
-    import random
-    selected_tips = tips_map.get(most_frequent_score, tips_map[2])
-    wellness_tip = random.choice(selected_tips)
+    if stress_val <= 3:
+        category = 'low'
+    elif stress_val <= 7:
+        category = 'moderate'
+    else:
+        category = 'high'
+        
+    tips_pool = stress_tips[category]
+    # Deterministic selection: (stress_val + day_of_year) % length
+    day_of_year = datetime.now().timetuple().tm_yday
+    tip_index = (stress_val + day_of_year) % len(tips_pool)
+    wellness_tip = tips_pool[tip_index]
 
     return {
         'sleep': str(sleep),
@@ -838,22 +893,30 @@ def dashboard():
     # 2. Daily Spend
     cur.execute('SELECT amount FROM expenses WHERE user_email = ? AND expense_date = ?', (user_email, today_iso))
     total_spent_today = sum(row['amount'] for row in cur.fetchall())
-    cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ?', (user_email, today_iso))
+    cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ? AND is_checked = 1', (user_email, today_iso))
     total_spent_today += sum(row['estimated_cost'] or 0 for row in cur.fetchall())
    
     # 3. Monthly Spend
     cur.execute('SELECT category, amount FROM expenses WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
     monthly_expenses_rows = cur.fetchall()
-    cur.execute('SELECT category, estimated_cost FROM grocery_items WHERE user_email = ? AND month_iso = ?', (user_email, selected_month_iso))
+    cur.execute('SELECT category, estimated_cost FROM grocery_items WHERE user_email = ? AND month_iso = ? AND is_checked = 1', (user_email, selected_month_iso))
     grocery_rows = cur.fetchall()
     total_spent_month = sum(row['amount'] for row in monthly_expenses_rows) + sum(row['estimated_cost'] or 0 for row in grocery_rows)
    
-    # Calculate Top Category
-    cat_totals = {c: 0 for c in ["Groceries", "Kids/School", "Transport", "Utilities", "Home Mortgage", "Subscription", "Savings", "Others"]}
+    # Calculate Top Category Dynamic
+    cur.execute('SELECT name FROM spending_categories WHERE user_email = ?', (user_email,))
+    cat_names = [row['name'] for row in cur.fetchall()]
+    # Ensure "Groceries" and "Others" are included as fallbacks
+    if "Groceries" not in cat_names: cat_names.append("Groceries")
+    if "Others" not in cat_names: cat_names.append("Others")
+    
+    cat_totals = {c: 0 for c in cat_names}
+    
     for row in monthly_expenses_rows:
         c = row['category']
         if c not in cat_totals: c = "Others"
         cat_totals[c] += row['amount']
+        
     for row in grocery_rows:
         c = row['category'] or "Groceries"
         if c not in cat_totals: c = "Others"
@@ -865,7 +928,7 @@ def dashboard():
         if top_amt > 0:
             top_expense_category = f"{top_cat} (₱{top_amt:,.2f})"
 
-    # Status Indicator
+    # Status Indicator based on Budget Limit (Alert)
     if budget_limit > 0:
         pct = (total_spent_month / budget_limit) * 100
         if pct > 100:
@@ -1344,14 +1407,39 @@ def budgetexpenses():
     cur.execute('SELECT amount FROM expenses WHERE user_email = ? AND expense_date = ?', (user_email, today_iso))
     total_spent_today = sum(r['amount'] for r in cur.fetchall())
     # Add groceries from today
-    cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ?', (user_email, today_iso))
+    cur.execute('SELECT estimated_cost FROM grocery_items WHERE user_email = ? AND substr(created_at, 1, 10) = ? AND is_checked = 1', (user_email, today_iso))
     total_spent_today += sum(r['estimated_cost'] or 0 for r in cur.fetchall())
 
     # 3. Grocery Items (if valid for this month)
     cur.execute('SELECT * FROM grocery_items WHERE user_email = ? AND month_iso = ? ORDER BY is_checked ASC, created_at DESC', (user_email, selected_month_iso))
     g_rows = cur.fetchall()
     groceries = [dict(r) for r in g_rows]
-    total_spent += sum(r['estimated_cost'] or 0 for r in groceries)
+    total_spent += sum(r['estimated_cost'] or 0 for r in groceries if r['is_checked'])
+
+    # 4. Spending Categories
+    cur.execute('SELECT id, name, color FROM spending_categories WHERE user_email = ?', (user_email,))
+    cat_rows = cur.fetchall()
+    if not cat_rows:
+        # Seed defaults if none exist
+        default_cats = [
+            ("Groceries", "#8bc34a"),
+            ("Kids/School", "#ffb74d"),
+            ("Transport", "#4dd0e1"),
+            ("Utilities", "#ba68c8"),
+            ("Home Mortgage", "#ef5350"),
+            ("Subscription", "#66bb6a"),
+            ("Savings", "#ffd54f"),
+            ("Others", "#90a4ae")
+        ]
+        now = datetime.utcnow().isoformat()
+        for name, color in default_cats:
+            cur.execute('INSERT OR IGNORE INTO spending_categories (user_email, name, color, is_default, created_at) VALUES (?, ?, ?, 1, ?)',
+                        (user_email, name, color, now))
+        conn.commit()
+        cur.execute('SELECT id, name, color FROM spending_categories WHERE user_email = ?', (user_email,))
+        cat_rows = cur.fetchall()
+    
+    db_categories = [dict(r) for r in cat_rows]
 
     conn.close()
   
@@ -1361,6 +1449,7 @@ def budgetexpenses():
                         budget_data=budget_data,
                         expenses=expenses,
                         groceries=groceries,
+                        db_categories=db_categories,
                         total_spent=total_spent,
                         total_spent_today=total_spent_today)
 
@@ -1794,7 +1883,61 @@ def api_expenses_get():
     return jsonify({'month_iso': month_iso, 'expenses': [dict(r) for r in rows]})
 
 
-@app.route('/api/budget-settings', methods=['POST'])
+@app.route('/api/categories', methods=['GET', 'POST'])
+def api_categories():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    
+    if request.method == 'GET':
+        cur.execute('SELECT id, name, color FROM spending_categories WHERE user_email = ?', (user_email,))
+        rows = cur.fetchall()
+        conn.close()
+        return jsonify({'categories': [dict(r) for r in rows]})
+
+    # POST -> add new category
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    color = data.get('color', '#90a4ae').strip()
+    if not name:
+        return jsonify({'error': 'Category name is required'}), 400
+
+    now = datetime.utcnow().isoformat()
+    try:
+        cur.execute('INSERT INTO spending_categories (user_email, name, color, created_at) VALUES (?, ?, ?, ?)',
+                    (user_email, name, color, now))
+        conn.commit()
+        new_id = cur.lastrowid
+        conn.close()
+        return jsonify({'id': new_id, 'name': name, 'color': color}), 201
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'error': 'Category already exists'}), 400
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/categories/<int:cat_id>', methods=['DELETE'])
+def api_delete_category(cat_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute('DELETE FROM spending_categories WHERE id = ? AND user_email = ?', (cat_id, user_email))
+        conn.commit()
+        conn.close()
+        return jsonify({'deleted': True})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
 def api_save_budget_settings():
     user_email = session.get('user_email')
     if not user_email:
@@ -1827,58 +1970,101 @@ def api_save_budget_settings():
 
 
 @app.route('/api/expenses', methods=['POST'])
-def api_expenses_add():
+def api_expenses_save():
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'login required'}), 401
 
     data = request.get_json() or {}
-    category = (data.get('category') or '').strip()
-    description = (data.get('description') or '').strip()
-    color = data.get('color')
+    month_iso = data.get('month_iso') or month_iso_or_current()
+    category = data.get('category', '')
+    description = data.get('description', '')
     amount = float(data.get('amount') or 0)
     expense_date = data.get('expense_date')
-
-    # Ensure month_iso matches the expense_date if provided
-    if expense_date and len(expense_date) >= 7:
-        month_iso = expense_date[:7]
-    else:
-        month_iso = data.get('month_iso') or month_iso_or_current()
+    is_eco = 1 if data.get('is_eco') else 0
     now = datetime.utcnow().isoformat()
 
     conn = get_db()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            INSERT INTO expenses (user_email, month_iso, category, description, color, amount, expense_date, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (user_email, month_iso, category, description, color, amount, expense_date, now))
+        cur.execute(
+            "INSERT INTO expenses (user_email, month_iso, category, amount, expense_date, description, is_eco, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_email, month_iso, category, amount, expense_date, description, is_eco, now)
+        )
         conn.commit()
         new_id = cur.lastrowid
         conn.close()
-    except Exception:
+        return jsonify({'id': new_id, 'ok': True})
+    except Exception as e:
+        print(f"Error saving expense: {e}")
         conn.rollback()
         conn.close()
-        return jsonify({'error': 'Unable to create expense'}), 500
+        return jsonify({'error': 'Unable to save expense'}), 500
 
-    return jsonify({'id': new_id}), 201
 
-@app.route('/api/expenses/<int:expense_id>', methods=['DELETE'])
-def api_expenses_delete(expense_id):
+@app.route('/api/expenses/<int:item_id>', methods=['PUT', 'DELETE'])
+def api_expense_item(item_id):
     user_email = session.get('user_email')
     if not user_email:
         return jsonify({'error': 'login required'}), 401
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("""
-        DELETE FROM expenses
-        WHERE id = ? AND user_email = ?
-    """, (expense_id, user_email))
-    conn.commit()
-    conn.close()
 
-    return jsonify({'deleted': True})
+    if request.method == 'DELETE':
+        cur.execute("DELETE FROM expenses WHERE id = ? AND user_email = ?", (item_id, user_email))
+        conn.commit()
+        deleted = cur.rowcount > 0
+        conn.close()
+        if deleted:
+            return jsonify({'deleted': True})
+        else:
+            return jsonify({'error': 'Not found or unauthorized'}), 404
+
+    # PUT update
+    data = request.get_json() or {}
+    category = data.get('category')
+    description = data.get('description')
+    amount = data.get('amount')
+    expense_date = data.get('expense_date')
+    is_eco = data.get('is_eco')
+
+    fields = []
+    values = []
+    if category is not None:
+        fields.append("category = ?")
+        values.append(category)
+    if description is not None:
+        fields.append("description = ?")
+        values.append(description)
+    if amount is not None:
+        fields.append("amount = ?")
+        values.append(float(amount))
+    if expense_date is not None:
+        fields.append("expense_date = ?")
+        values.append(expense_date)
+
+    if not fields:
+        conn.close()
+        return jsonify({'message': 'No changes provided'})
+
+    values.append(item_id)
+    values.append(user_email)
+
+    try:
+        sql = f"UPDATE expenses SET {', '.join(fields)} WHERE id = ? AND user_email = ?"
+        cur.execute(sql, tuple(values))
+        conn.commit()
+        updated = cur.rowcount > 0
+        conn.close()
+        if updated:
+            return jsonify({'updated': True, 'id': item_id})
+        else:
+            return jsonify({'error': 'Not found or unauthorized'}), 404
+    except Exception as e:
+        print(f"Error updating expense: {e}")
+        conn.close()
+        return jsonify({'error': 'Update failed'}), 500
 
 @app.route('/api/groceries', methods=['GET'])
 def api_groceries_get():
@@ -1936,6 +2122,61 @@ def api_groceries_add():
         return jsonify({'error': 'Unable to create grocery item'}), 500
 
     return jsonify({'id': new_id}), 201
+
+@app.route('/api/groceries/<int:item_id>', methods=['PUT', 'PATCH'])
+def api_groceries_update(item_id):
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+
+    data = request.get_json() or {}
+    
+    # Build update query dynamically based on provided fields
+    updates = []
+    params = []
+    
+    if 'item_name' in data:
+        updates.append('item_name = ?')
+        params.append(data['item_name'].strip())
+    
+    if 'quantity' in data:
+        updates.append('quantity = ?')
+        params.append(int(data['quantity']))
+    
+    if 'estimated_cost' in data:
+        updates.append('estimated_cost = ?')
+        params.append(float(data['estimated_cost']))
+    
+    if 'category' in data:
+        updates.append('category = ?')
+        params.append(data['category'].strip())
+    
+    if 'is_checked' in data:
+        updates.append('is_checked = ?')
+        params.append(1 if data['is_checked'] else 0)
+    
+    if not updates:
+        return jsonify({'error': 'No fields to update'}), 400
+    
+    params.extend([item_id, user_email])
+    
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        query = f"UPDATE grocery_items SET {', '.join(updates)} WHERE id = ? AND user_email = ?"
+        cur.execute(query, params)
+        conn.commit()
+        
+        if cur.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Item not found or unauthorized'}), 404
+        
+        conn.close()
+        return jsonify({'updated': True})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/groceries/<int:item_id>', methods=['DELETE'])
 def api_groceries_delete(item_id):

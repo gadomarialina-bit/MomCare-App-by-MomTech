@@ -1,128 +1,74 @@
 <!-- Shared navbar + off-canvas menu -->
 <header class="bg-green-900 text-white">
-    <div class="max-w-7xl m-auto px-6 py-6">
-        <div class="flex items-center justify-between relative">
-            {% if request.endpoint == 'profile' %}
-            <div class="flex items-center gap-6">
-                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-                    class="h-20 w-auto" />
-                <div>
-                    <h1 class="text-l lg:text-xl font-bold">My Account</h1>
-                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
-                            }}</span></p>
-                </div>
-            </div>
-            {% elif request.endpoint == 'mood' %}
-            <div class="flex items-center gap-6">
-                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-                    class="h-20 w-auto" />
-                <div>
-                    <h1 class="text-l lg:text-xl font-bold">Mood & Wellness</h1>
-                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
-                            }}</span></p>
-                </div>
-            </div>
-            {% elif request.endpoint == 'budgetexpenses' %}
-            <div class="flex items-center gap-6">
-                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-                    class="h-20 w-auto" />
-                <div>
-                    <h1 class="text-l lg:text-xl font-bold">Budget & Expenses</h1>
-                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
-                </div>
-            </div>
-            {% elif request.endpoint == 'tasks' %}
-            <div class="flex items-center gap-6">
-                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-                    class="h-20 w-auto" />
-                <div>
-                    <h1 class="text-l lg:text-xl font-bold">Slay your day, {{ first or session.get('user_first') or
-                        'User' }}!</h1>
-                    <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
-                            }}</span></p>
-                </div>
-            </div>
-            {% else %}
-            <div class="flex items-center gap-6">
-                <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
-                    class="h-16 w-auto" />
-                <div>
-                    <h1 class="text-l lg:text-xl font-bold">How are you today, {{ first or session.get('user_first') or
-                        'User' }}?</h1>
-                    <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
-                            }}</span></p>
-                </div>
-            </div>
-            {% endif %}
-
-      <!-- Hidden dropdown month/year picker (only budgetexpenses) -->
-      {% if request.endpoint == 'budgetexpenses' %}
-      <div class="hidden md:flex items-center mr-4 relative">
-
-        <form id="month-form" action="{{ request.path }}" method="get" class="relative">
-          <!-- Backend receives month=YYYY-MM -->
-          <input type="hidden" id="month-input" name="month" value="{{ selected_month_iso or '' }}" />
-
-          <!-- Clickable display -->
-          <button
-            type="button"
-            id="month-toggle"
-            class="bg-white text-green-900 px-4 py-3 rounded shadow-lg flex items-center justify-between w-[260px]"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-controls="month-panel"
-          >
-            <span id="month-label" class="font-medium text-left">
-              {{ selected_month or 'Select Month' }}
-            </span>
-            <i class="fas fa-caret-down text-yellow-500 text-xl"></i>
-          </button>
-
-          <!-- Dropdown panel (hidden until click) -->
-          <div
-            id="month-panel"
-            class="hidden absolute right-0 mt-2 w-[260px] bg-white text-green-900 rounded shadow-lg border border-gray-200 p-4 z-[60]"
-            role="menu"
-            aria-label="Month and year selector"
-          >
-            <div class="space-y-3">
-              <select
-                id="year-select"
-                class="w-full border border-gray-200 rounded px-3 py-3 focus:outline-none focus:ring-2 focus:ring-green-300"
-                aria-label="Select year"
-              ></select>
-
-              <select
-                id="month-select"
-                class="w-full border border-gray-200 rounded px-3 py-3 focus:outline-none focus:ring-2 focus:ring-green-300"
-                aria-label="Select month"
-              >
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-          </div>
-        </form>
-
+  <div class="max-w-7xl m-auto px-6 py-6">
+    <div class="flex items-center justify-between relative">
+      {% if request.endpoint == 'profile' %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-20 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">My Account</h1>
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+              }}</span></p>
+        </div>
+      </div>
+      {% elif request.endpoint == 'mood' %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-20 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">Mood & Wellness</h1>
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+              }}</span></p>
+        </div>
+      </div>
+      {% elif request.endpoint == 'budgetexpenses' %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-20 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">Budget & Expenses</h1>
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or '' }}</span></p>
+        </div>
+      </div>
+      {% elif request.endpoint == 'tasks' %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-20 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">Slay your day, {{ first or session.get('user_first') or
+            'User' }}!</h1>
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+              }}</span></p>
+        </div>
+      </div>
+      {% else %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-16 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">How are you today, {{ first or session.get('user_first') or
+            'User' }}?</h1>
+          <p class="mt-1 text-xs lg:text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+              }}</span></p>
+        </div>
       </div>
       {% endif %}
 
-      <button id="menu-toggle" class="p-3 md:p-2 rounded-md mr-2 focus:outline-none"
-        aria-label="Open menu" aria-expanded="false" aria-controls="menu-list">
-        <svg class="h-8 w-8 text-[#ffcc48]" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z" />
-        </svg>
-      </button>
+      <!-- Right Side Grouping: Picker + Menu Toggle -->
+      <div class="flex items-center gap-2 md:gap-4">
+
+
+
+        <button id="menu-toggle" class="p-3 md:p-2 rounded-md focus:outline-none" aria-label="Open menu"
+          aria-expanded="false" aria-controls="menu-list">
+          <svg class="h-8 w-8 text-[#ffcc48]" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+            viewBox="0 0 24 24">
+            <path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z" />
+          </svg>
+        </button>
+
+      </div>
 
       <!-- Overlay for off-canvas menu -->
       <div id="overlay" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
@@ -133,11 +79,12 @@
         aria-hidden="true">
         <div class="flex items-center justify-between px-4 py-4 border-b">
           <div class="flex items-center gap-3">
-            <img class="h-10 w-auto" src="{{ url_for('static', filename='images/momcare_logo_colored.png') }}" alt="MomCare" />
+            <img class="h-10 w-auto" src="{{ url_for('static', filename='images/momcare_logo_colored.png') }}"
+              alt="MomCare" />
           </div>
           <button id="side-close" aria-label="Close menu" class="p-2 rounded hover:bg-gray-100">
-            <svg class="h-6 w-6 text-green-800" xmlns="http://www.w3.org/2000/svg" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="h-6 w-6 text-green-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -208,97 +155,7 @@
     });
   }
 
-  // Hidden dropdown month/year picker behavior
-  const monthForm = document.getElementById('month-form');
-  const hiddenMonthInput = document.getElementById('month-input');
-  const monthToggle = document.getElementById('month-toggle');
-  const monthPanel = document.getElementById('month-panel');
-  const monthLabel = document.getElementById('month-label');
-  const yearSelect = document.getElementById('year-select');
-  const monthSelect = document.getElementById('month-select');
 
-  const MONTH_NAMES = {
-    "01": "January", "02": "February", "03": "March", "04": "April",
-    "05": "May", "06": "June", "07": "July", "08": "August",
-    "09": "September", "10": "October", "11": "November", "12": "December"
-  };
 
-  function pad2(n) { return String(n).padStart(2, '0'); }
 
-  function openMonthPanel() {
-    monthPanel.classList.remove('hidden');
-    monthToggle.setAttribute('aria-expanded', 'true');
-  }
-
-  function closeMonthPanel() {
-    monthPanel.classList.add('hidden');
-    monthToggle.setAttribute('aria-expanded', 'false');
-  }
-
-  function toggleMonthPanel() {
-    if (monthPanel.classList.contains('hidden')) openMonthPanel();
-    else closeMonthPanel();
-  }
-
-  function buildYears(selectedYear) {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const start = currentYear - 5;
-    const end = currentYear + 5;
-
-    yearSelect.innerHTML = '';
-    for (let y = start; y <= end; y++) {
-      const opt = document.createElement('option');
-      opt.value = String(y);
-      opt.textContent = String(y);
-      if (String(y) === String(selectedYear)) opt.selected = true;
-      yearSelect.appendChild(opt);
-    }
-  }
-
-  function updateLabel(year, month) {
-    monthLabel.textContent = `${MONTH_NAMES[month] || 'Month'} ${year}`;
-  }
-
-  function submitMonth() {
-    const y = yearSelect.value;
-    const m = monthSelect.value;
-    hiddenMonthInput.value = `${y}-${m}`;
-    updateLabel(y, m);
-    closeMonthPanel();
-    monthForm.submit();
-  }
-
-  if (monthForm && hiddenMonthInput && monthToggle && monthPanel && monthLabel && yearSelect && monthSelect) {
-    let initial = hiddenMonthInput.value;
-    if (!initial) {
-      const d = new Date();
-      initial = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-      hiddenMonthInput.value = initial;
-    }
-
-    const parts = initial.split('-');
-    const initYear = parts[0] || String(new Date().getFullYear());
-    const initMonth = parts[1] || pad2(new Date().getMonth() + 1);
-
-    buildYears(initYear);
-    monthSelect.value = initMonth;
-    updateLabel(initYear, initMonth);
-
-    monthToggle.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleMonthPanel();
-    });
-
-    monthPanel.addEventListener('click', (e) => e.stopPropagation());
-    document.addEventListener('click', () => closeMonthPanel());
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeMonthPanel();
-    });
-
-    yearSelect.addEventListener('change', submitMonth);
-    monthSelect.addEventListener('change', submitMonth);
-  }
 </script>

@@ -63,31 +63,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Days
+        // Start of today for comparison (set hours to 0 to compare dates only)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
         for (let d = 1; d <= daysInMonth; d++) {
+            const dayDate = new Date(year, month, d);
+            const isPast = dayDate < todayStart;
+
             const dayCell = document.createElement('div');
             dayCell.textContent = d;
-            dayCell.className = 'calendar-day text-center px-2 py-1 rounded cursor-pointer hover:bg-sky-100 text-sm';
+            dayCell.className = 'calendar-day text-center px-2 py-1 rounded text-sm';
 
-            // Apply Tailwind highlight if this is the selected date
-            if (selectedDate && d === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
-                dayCell.classList.add('bg-amber-300', 'text-green-900', 'font-semibold');
-            }
+            if (isPast) {
+                // Disabled styling for past dates
+                dayCell.classList.add('text-gray-300', 'cursor-not-allowed');
+            } else {
+                // Interactive styling for current and future dates
+                dayCell.classList.add('cursor-pointer', 'hover:bg-sky-100');
 
-            // Subtle highlight for today's date (not the same as selected)
-            if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                // don't override selected styling
-                if (!(selectedDate && d === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear())) {
-                    dayCell.classList.add('ring-2', 'ring-green-300');
+                // Apply Tailwind highlight if this is the selected date
+                if (selectedDate && d === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
+                    dayCell.classList.add('bg-amber-300', 'text-green-900', 'font-semibold');
                 }
-            }
 
-            dayCell.addEventListener('click', () => {
-                selectedDate = new Date(year, month, d);
-                renderCalendar(currentDate); // re-render to update active classes
-                loadTasks(); // fetch/filter tasks for this date
-                // enable Add Task button visually (Tailwind classes)
-                btnAddTask.classList.remove('opacity-60', 'cursor-not-allowed');
-            });
+                // Subtle highlight for today's date (not the same as selected)
+                if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                    if (!(selectedDate && d === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear())) {
+                        dayCell.classList.add('ring-2', 'ring-green-300');
+                    }
+                }
+
+                dayCell.addEventListener('click', () => {
+                    selectedDate = new Date(year, month, d);
+                    renderCalendar(currentDate); // re-render to update active classes
+                    loadTasks(); // fetch/filter tasks for this date
+                    // enable Add Task button visually (Tailwind classes)
+                    btnAddTask.classList.remove('opacity-60', 'cursor-not-allowed');
+                });
+            }
 
             calendarGrid.appendChild(dayCell);
         }
@@ -436,14 +450,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     reminderListEl.appendChild(li);
                 });
                 // attach delete/edit handlers
-                document.querySelectorAll('.delete-reminder').forEach(btn => btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
+                reminderListEl.querySelectorAll('.delete-reminder').forEach(btn => btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
                     // open modal to confirm deletion
                     pendingReminderDeleteId = id;
                     if (deleteReminderModal) deleteReminderModal.classList.remove('hidden');
                 }));
-                document.querySelectorAll('.edit-reminder').forEach(btn => btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
+                reminderListEl.querySelectorAll('.edit-reminder').forEach(btn => btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
                     startEditReminder(id);
                 }));
             }).catch(err => console.error('Error loading reminder items:', err));
