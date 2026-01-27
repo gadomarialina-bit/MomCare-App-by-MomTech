@@ -1938,6 +1938,7 @@ def api_delete_category(cat_id):
         conn.rollback()
         conn.close()
         return jsonify({'error': str(e)}), 500
+@app.route('/api/budget-settings', methods=['POST'])
 def api_save_budget_settings():
     user_email = session.get('user_email')
     if not user_email:
