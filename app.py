@@ -7,6 +7,10 @@ from sqlite3 import Connection
 import os
 import random
 from datetime import datetime, timedelta
+import threading
+import time
+import smtplib
+from email.message import EmailMessage
 
 
 
@@ -174,10 +178,23 @@ def init_db():
             is_priority INTEGER DEFAULT 0,
             task_date TEXT,
             completed INTEGER DEFAULT 0,
+            notified INTEGER DEFAULT 0,
             created_at TEXT
         )
         """
     )
+
+    # Add notified column to existing tasks table if it doesn't exist
+    try:
+        cur.execute("PRAGMA table_info(tasks)")
+        task_cols = [r[1] for r in cur.fetchall()]
+        if 'notified' not in task_cols:
+            try:
+                cur.execute("ALTER TABLE tasks ADD COLUMN notified INTEGER DEFAULT 0")
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 # Create expenses table
     cur.execute(
@@ -2198,6 +2215,83 @@ def api_groceries_delete(item_id):
     conn.close()
 
     return jsonify({'deleted': True})
+
+
+def send_task_notification_email(to_email, task_title, start_time_str):
+    smtp_server = os.environ.get('SMTP_SERVER')
+    smtp_port = os.environ.get('SMTP_PORT', '587')
+    smtp_user = os.environ.get('SMTP_USERNAME')
+    smtp_pass = os.environ.get('SMTP_PASSWORD')
+
+    msg = EmailMessage()
+    msg['Subject'] = f"Reminder: Upcoming Task '{task_title}'"
+    msg['From'] = smtp_user or "notifications@momcare.local"
+    msg['To'] = to_email
+    msg.set_content(f"Hello,\n\nThis is a friendly reminder that your task '{task_title}' is scheduled to start at {start_time_str} today.\n\nBest regards,\nMomCare Team")
+
+    if not smtp_server or not smtp_user or not smtp_pass:
+        print(f"\n[EMAIL SIMULATION] Would send to {to_email}: Task '{task_title}' starts at {start_time_str}\n")
+        return
+
+    try:
+        server = smtplib.SMTP(smtp_server, int(smtp_port))
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        print(f"[EMAIL SENT] Successfully sent notification to {to_email} for task '{task_title}'.")
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send to {to_email}: {e}")
+
+def task_notification_worker():
+    while True:
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            today_iso = datetime.now().strftime('%Y-%m-%d')
+            
+            # Get pending, unnotified tasks for today
+            try:
+                cur.execute('SELECT id, user_email, title, start_time FROM tasks WHERE task_date = ? AND completed = 0 AND notified = 0 AND start_time IS NOT NULL', (today_iso,))
+                tasks = cur.fetchall()
+            except Exception as e:
+                # Table might not exist yet if db init hasn't completed
+                tasks = []
+
+            now = datetime.now()
+            current_time_val = now.hour + (now.minute / 60.0)
+
+            for t in tasks:
+                start_time_val = t['start_time']
+                if start_time_val is None:
+                    continue
+                
+                # Check if task is starting within the next 30 minutes (0.5 hours)
+                if current_time_val >= (start_time_val - 0.5) and current_time_val <= (start_time_val + 0.25):
+                    # Format time roughly
+                    h = int(start_time_val)
+                    m = int(round((start_time_val - h) * 60))
+                    am_pm = 'AM' if h < 12 else 'PM'
+                    fmt_h = h if h <= 12 else h - 12
+                    if fmt_h == 0: fmt_h = 12
+                    start_time_str = f"{fmt_h}:{m:02d} {am_pm}"
+
+                    send_task_notification_email(t['user_email'], t['title'], start_time_str)
+
+                    # Mark as notified
+                    cur.execute('UPDATE tasks SET notified = 1 WHERE id = ?', (t['id'],))
+                    conn.commit()
+            
+            conn.close()
+        except Exception as e:
+            print(f"Error in task_notification_worker: {e}")
+        
+        time.sleep(60)
+
+# Start background thread
+worker_thread = threading.Thread(target=task_notification_worker, daemon=True)
+worker_thread.start()
 
 
 if __name__ == '__main__':
