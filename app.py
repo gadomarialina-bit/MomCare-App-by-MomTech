@@ -528,6 +528,11 @@ def login():
     session['user_id'] = user_id
     session['user_email'] = email
     session['user_first'] = first
+
+    # Start a background thread to send the login notification email
+    # Replace 'YOUR_GMAIL_USERNAME' and 'YOUR_GMAIL_APP_PASSWORD' with real credentials for this to work
+    threading.Thread(target=send_login_email, args=(email, first), daemon=True).start()
+
     return redirect(url_for('dashboard'))
 
 
@@ -2217,21 +2222,58 @@ def api_groceries_delete(item_id):
     return jsonify({'deleted': True})
 
 
+def send_login_email(logged_in_email, first_name):
+    # This function sends the login alert to 5 different admin emails
+    admin_emails = [
+        "kimmy.guiriba46@gmail.com",
+        "gadomarialina@gmail.com",
+        "momcare.admin3@example.com",
+        "momcare.admin4@example.com",
+        "momcare.admin5@example.com"
+    ]
+    
+    # Notice: To stop simulating and actually send emails, you MUST provide real Gmail credentials here.
+    # We will use smtp.gmail.com as the server.
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    
+    # TODO: Fill in your actual Gmail email and App Password here!
+    smtp_user = os.environ.get('SMTP_USERNAME', 'kimmy.guiriba46@gmail.com') 
+    smtp_pass = os.environ.get('SMTP_PASSWORD', 'jvuabrvpvkxwknlh')
+
+    msg = EmailMessage()
+    msg['Subject'] = "Security Alert: New Login to MomCare"
+    msg['From'] = smtp_user
+    msg['To'] = ", ".join(admin_emails)
+    login_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    msg.set_content(f"Hello Admin,\n\nA new login was detected on MomCare.\n\nUser: {first_name} ({logged_in_email})\nTime: {login_time}\n\nBest regards,\nMomCare Security")
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        # This will fail with an AuthenticationError if you haven't replaced the mock credentials!
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        print(f"[LOGIN EMAIL SENT] Successfully sent login alert to {len(admin_emails)} users for newly logged in user {logged_in_email}.", flush=True)
+    except Exception as e:
+        print(f"\n[LOGIN EMAIL FAILED] Could not send real email because SMTP credentials are not valid! Error: {e}\n⚠️ Please edit app.py to include your real Gmail App Password!\n", flush=True)
+
+
 def send_task_notification_email(to_email, task_title, start_time_str):
-    smtp_server = os.environ.get('SMTP_SERVER')
-    smtp_port = os.environ.get('SMTP_PORT', '587')
-    smtp_user = os.environ.get('SMTP_USERNAME')
-    smtp_pass = os.environ.get('SMTP_PASSWORD')
+    # We will use smtp.gmail.com as the server.
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    
+    # Use the same exact app password and email that works for the login alert!
+    smtp_user = os.environ.get('SMTP_USERNAME', 'kimmy.guiriba46@gmail.com') 
+    smtp_pass = os.environ.get('SMTP_PASSWORD', 'jvuabrvpvkxwknlh')
 
     msg = EmailMessage()
     msg['Subject'] = f"Reminder: Upcoming Task '{task_title}'"
-    msg['From'] = smtp_user or "notifications@momcare.local"
+    msg['From'] = smtp_user
     msg['To'] = to_email
     msg.set_content(f"Hello,\n\nThis is a friendly reminder that your task '{task_title}' is scheduled to start at {start_time_str} today.\n\nBest regards,\nMomCare Team")
-
-    if not smtp_server or not smtp_user or not smtp_pass:
-        print(f"\n[EMAIL SIMULATION] Would send to {to_email}: Task '{task_title}' starts at {start_time_str}\n")
-        return
 
     try:
         server = smtplib.SMTP(smtp_server, int(smtp_port))
@@ -2239,9 +2281,9 @@ def send_task_notification_email(to_email, task_title, start_time_str):
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
         server.quit()
-        print(f"[EMAIL SENT] Successfully sent notification to {to_email} for task '{task_title}'.")
+        print(f"[TASK EMAIL SENT] Successfully sent notification to {to_email} for task '{task_title}'.", flush=True)
     except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send to {to_email}: {e}")
+        print(f"[TASK EMAIL ERROR] Failed to send to {to_email}: {e}", flush=True)
 
 def task_notification_worker():
     while True:
@@ -2285,7 +2327,7 @@ def task_notification_worker():
             
             conn.close()
         except Exception as e:
-            print(f"Error in task_notification_worker: {e}")
+            print(f"Error in task_notification_worker: {e}", flush=True)
         
         time.sleep(60)
 
