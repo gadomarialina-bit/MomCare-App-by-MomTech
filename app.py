@@ -274,6 +274,7 @@ def init_db():
             remind_at TEXT,
             is_recurring INTEGER DEFAULT 0,
             recurrence_rule TEXT,
+            email_sent INTEGER DEFAULT 0,
             created_at TEXT,
             updated_at TEXT
         )
@@ -2331,9 +2332,102 @@ def task_notification_worker():
         
         time.sleep(60)
 
-# Start background thread
-worker_thread = threading.Thread(target=task_notification_worker, daemon=True)
-worker_thread.start()
+
+def scheduled_reminder_worker():
+    """Background worker to send scheduled reminder emails."""
+    print("[SCHEDULED WORKER] Started - checking for reminders every 60 seconds", flush=True)
+    while True:
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            # Get candidates (not yet sent) and evaluate with datetime parsing.
+            cur.execute(
+                'SELECT id, user_email, title, message, remind_at FROM reminder_items WHERE remind_at IS NOT NULL AND email_sent = 0'
+            )
+            rows = cur.fetchall()
+
+            for row in rows:
+                remind_at_val = row['remind_at']
+                if not remind_at_val:
+                    continue
+
+                # Normalize reminder datetime that may use ISO `T` or space and optional seconds
+                try:
+                    remind_dt = datetime.fromisoformat(remind_at_val)
+                except Exception:
+                    try:
+                        remind_dt = datetime.strptime(remind_at_val, '%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        try:
+                            remind_dt = datetime.strptime(remind_at_val, '%Y-%m-%d %H:%M')
+                        except Exception:
+                            print(f"[SCHEDULED REMINDER PARSE ERROR] cannot parse remind_at={remind_at_val}", flush=True)
+                            continue
+
+                if remind_dt > datetime.now():
+                    continue
+
+                user_email = row['user_email']
+                title = row['title'] or 'Scheduled Reminder'
+                message = row['message'] or 'This is your scheduled reminder.'
+
+                print(f"[SCHEDULED REMINDER] Sending '{title}' to {user_email} (scheduled for {remind_at_val})", flush=True)
+
+                smtp_server = 'smtp.gmail.com'
+                smtp_port = 587
+                smtp_user = os.environ.get('SMTP_USERNAME') or os.environ.get('MAIL_USERNAME') or 'kimmy.guiriba46@gmail.com'
+                smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('MAIL_PASSWORD') or 'jvuabrvpvkxwknlh'
+
+                print(f"[SCHEDULED REMINDER EMAIL] Using SMTP user: {smtp_user} (credentials set: {'yes' if smtp_pass else 'no'})", flush=True)
+                if smtp_user and smtp_pass:
+                    subject = f"Reminder: {title}"
+                    body = f"Hello,\n\n{message}\n\nBest regards,\nMomCare Team"
+
+                    msg = EmailMessage()
+                    msg['Subject'] = subject
+                    msg['From'] = smtp_user
+                    msg['To'] = user_email
+                    msg.set_content(body)
+
+                    try:
+                        server = smtplib.SMTP(smtp_server, smtp_port)
+                        server.starttls()
+                        server.login(smtp_user, smtp_pass)
+                        server.send_message(msg)
+                        server.quit()
+                        print(f"[SCHEDULED REMINDER EMAIL] Successfully sent '{title}' to {user_email}", flush=True)
+                    except Exception as e:
+                        print(f"[SCHEDULED REMINDER EMAIL ERROR] Failed to send to {user_email}: {e}", flush=True)
+                        cur.close()
+                        conn.close()
+                        time.sleep(60)
+                        continue
+                else:
+                    print(f"[SCHEDULED REMINDER EMAIL] No SMTP credentials (SMTP_USERNAME/SMTP_PASSWORD or MAIL_USERNAME/MAIL_PASSWORD).", flush=True)
+
+                # Mark as sent whether email send succeeded or not (to avoid retry loops)
+                cur.execute('UPDATE reminder_items SET email_sent = 1 WHERE id = ?', (row['id'],))
+                conn.commit()
+
+            conn.close()
+        except Exception as e:
+            print(f"[SCHEDULED REMINDER WORKER ERROR] {e}", flush=True)
+
+        # Check every 60 seconds
+        time.sleep(60)
+
+
+# Start background threads
+print("[STARTUP] Starting background worker threads...", flush=True)
+task_worker_thread = threading.Thread(target=task_notification_worker, daemon=True)
+task_worker_thread.start()
+print("[STARTUP] Task worker thread started", flush=True)
+
+scheduled_worker_thread = threading.Thread(target=scheduled_reminder_worker, daemon=True)
+scheduled_worker_thread.start()
+print("[STARTUP] Scheduled reminder worker thread started", flush=True)
 
 
 if __name__ == '__main__':
