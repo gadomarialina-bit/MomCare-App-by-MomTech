@@ -2227,7 +2227,7 @@ def send_login_email(logged_in_email, first_name):
     admin_emails = [
         "kimmy.guiriba46@gmail.com",
         "gadomarialina@gmail.com",
-        "momcare.admin3@example.com",
+        "janjasjamjen@gmail.com",
         "momcare.admin4@example.com",
         "momcare.admin5@example.com"
     ]
