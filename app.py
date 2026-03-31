@@ -738,18 +738,27 @@ def get_mood_wellness_data(user_email: str):
     conn = get_db()
     cur = conn.cursor()
     
-    # Get today's mood
-    cur.execute('SELECT mood FROM daily_moods WHERE user_email = ? AND date = ?', (user_email, today_date))
+    # Get today's mood and score
+    cur.execute('SELECT mood, mood_score FROM daily_moods WHERE user_email = ? AND date = ?', (user_email, today_date))
     row = cur.fetchone()
-    current_mood = row['mood'] if row else 'Neutral'
-    
+    current_mood = row['mood'] if row and row['mood'] else 'Neutral'
+    current_mood_score = int(row['mood_score']) if row and row['mood_score'] is not None else 2
+
+    mood_icon_map = {
+        'Happy': 'far fa-smile',
+        'Neutral': 'far fa-meh',
+        'Tired': 'far fa-frown',
+        'Stressed': 'far fa-tired'
+    }
+    mood_icon = mood_icon_map.get(current_mood, 'far fa-meh')
+
     # Get today's wellness
     cur.execute('SELECT sleep, water, activity, stress FROM daily_wellness WHERE user_email = ? AND date = ?', (user_email, today_date))
     w_row = cur.fetchone()
     if w_row:
         sleep = w_row['sleep']
         water = w_row['water']
-        activity = w_row['activity']
+        activity = w_row['activity'] if w_row['activity'] else 'Light Stretching'
         stress = w_row['stress']
     else:
         sleep = '7.5'
@@ -781,56 +790,232 @@ def get_mood_wellness_data(user_email: str):
         except:
             pass
 
-    conn.close()
+    # Get user profile for BMI-based wellness context
+    cur.execute('SELECT height, weight FROM users WHERE email = ?', (user_email,))
+    profile_row = cur.fetchone()
+    height_value = profile_row['height'] if profile_row and profile_row['height'] else None
+    weight_value = profile_row['weight'] if profile_row and profile_row['weight'] else None
+    print(f"DEBUG get_mood_wellness_data: user_email='{user_email}', profile_row={profile_row}, height_value={repr(height_value)}, weight_value={repr(weight_value)}")
 
-    # Generate Wellness Tip based on TODAY'S stress level
-    stress_val = int(stress)
-    
-    stress_tips = {
-        'low': [
-            "Great job keeping calm! 🌿",
-            "Feeling balanced is a superpower. ✨",
-            "Enjoy this peaceful moment. 🌸",
-            "You're doing great! Keep smiling. 😊"
-        ],
-        'moderate': [
-            "You're doing okay. Take a breath. ☕",
-            "Stay steady, you've got this. 💪",
-            "A short break might help recharge. 🔋",
-            "Keep going, but don't forget to rest. 🛑"
-        ],
-        'high': [
-            "It's okay to pause and breathe. 💛",
-            "Be kind to yourself right now. 🛡️",
-            "One step at a time is enough. 👣",
-            "Take a deep breath. You are strong. 🌟"
-        ]
-    }
-    
-    if stress_val <= 3:
-        category = 'low'
-    elif stress_val <= 7:
-        category = 'moderate'
+    def parse_number(val, default=0.0):
+        if not val:
+            return default
+        import re
+        match = re.search(r'(\d+\.?\d*)', str(val).strip())
+        if match:
+            try:
+                return float(match.group(1))
+            except Exception:
+                pass
+        return default
+
+    def parse_height(val):
+        if val is None or val == '' or val == '0':
+            return 0.0
+        val_str = str(val).strip().lower()
+        import re
+        numbers = re.findall(r'\d+\.?\d*', val_str)
+        if not numbers:
+            return 0.0
+        if 'cm' in val_str:
+            return float(numbers[0]) / 100.0
+        if 'in' in val_str or 'inch' in val_str or '"' in val_str:
+            return float(numbers[0]) * 0.0254
+        if 'ft' in val_str or 'feet' in val_str or "'" in val_str:
+            feet = float(numbers[0])
+            inches = float(numbers[1]) if len(numbers) > 1 else 0
+            return (feet * 12 + inches) * 0.0254
+        # Assume cm
+        return float(numbers[0]) / 100.0
+
+    def parse_weight(val):
+        if val is None or val == '' or val == '0':
+            return 0.0
+        val_str = str(val).strip().lower()
+        import re
+        numbers = re.findall(r'\d+\.?\d*', val_str)
+        if not numbers:
+            return 0.0
+        num = float(numbers[0])
+        if 'lbs' in val_str or 'pounds' in val_str or 'lb' in val_str:
+            return num * 0.453592
+        return num  # assume kg
+
+    height_m = parse_height(height_value)
+    weight_kg = parse_weight(weight_value)
+
+    bmi = None
+    bmi_category = 'Not Set'
+    bmi_score = 50  # Neutral score if BMI not available
+    if height_m > 0 and weight_kg > 0:
+        bmi = round(weight_kg / (height_m * height_m), 1)
+        if bmi < 18.5:
+            bmi_category = 'Underweight'
+            bmi_score = 60
+        elif bmi < 25:
+            bmi_category = 'Healthy'
+            bmi_score = 100
+        elif bmi < 30:
+            bmi_category = 'Overweight'
+            bmi_score = 70
+        else:
+            bmi_category = 'Obese'
+            bmi_score = 40
+
+    print(f"DEBUG BMI: user_email='{user_email}', height_value='{height_value}', weight_value='{weight_value}', height_m={height_m}, weight_kg={weight_kg}, bmi={bmi}")
+
+    def cap_int(v):
+        return max(0, min(100, int(round(v))))
+
+    sleep_val = parse_number(sleep, 7.5)
+    water_val = parse_number(water, 0.0)
+    stress_val = int(stress) if stress is not None else 5
+
+    sleep_score = cap_int(100 - abs(8.0 - sleep_val) * 12.5)
+    water_score = cap_int(min(100, (water_val / 8.0) * 100 if water_val >= 0 else 0))
+
+    activity_key = str(activity or '').strip().lower()
+    if 'heavy' in activity_key or 'active' in activity_key or 'intense' in activity_key:
+        activity_score = 100
+    elif 'moderate' in activity_key or 'medium' in activity_key:
+        activity_score = 80
+    elif 'light' in activity_key or 'walk' in activity_key or 'stretch' in activity_key:
+        activity_score = 60
+    elif 'none' in activity_key or activity_key == '':
+        activity_score = 20
     else:
-        category = 'high'
-        
-    tips_pool = stress_tips[category]
-    # Deterministic selection: (stress_val + day_of_year) % length
-    day_of_year = datetime.now().timetuple().tm_yday
-    tip_index = (stress_val + day_of_year) % len(tips_pool)
-    wellness_tip = tips_pool[tip_index]
+        activity_score = 50
+
+    stress_score = cap_int((10 - stress_val) * 10)
+
+    # Aggregate overall wellness score from key factors
+    factor_values = [sleep_score, water_score, activity_score, stress_score, bmi_score]
+    overall_score = cap_int(sum(factor_values) / len(factor_values))
+
+    # AI-style wellness recommendation - always generate based on available data
+    ai_tips = []
+    if bmi is not None:
+        ai_tips.append(f'BMI {bmi} ({bmi_category})')
+    else:
+        ai_tips.append('BMI: Not set (update in profile)')
+
+    ai_tips.append('Rest: {:.1f}h'.format(sleep_val))
+    ai_tips.append('Hydration: {} glass(es)'.format(int(water_val)))
+    ai_tips.append('Activity: {}'.format(activity or 'Not logged'))
+    ai_tips.append('Stress: {}/10'.format(stress_val))
+
+    if overall_score >= 80:
+        wellness_tip = 'Excellent progress! Keep up balanced meals, sleep, and movement, and maintain low stress levels.'
+    elif overall_score >= 60:
+        wellness_tip = 'Good job so far. Small adjustments in sleep and hydration can raise your wellness score.'
+    elif overall_score >= 40:
+        wellness_tip = 'Fair effort. Try improving one area at a time: add 10-20 minutes of activity or 1 extra glass of water.'
+    else:
+        wellness_tip = 'Attention needed. Focus on regular sleep, proper hydration, gentle activity, and stress reduction. Consider consulting a health professional.'
+
+    wellness_tip += ' [' + '; '.join(ai_tips) + ']'
+
+    if stress_val <= 3:
+        stress_category = 'low'
+    elif stress_val <= 7:
+        stress_category = 'moderate'
+    else:
+        stress_category = 'high'
+
+    conn.close()
 
     return {
         'sleep': str(sleep),
         'water': str(water),
         'activity': activity,
-        'stress': stress,
+        'stress': stress_val,
+        'stress_category': stress_category,
         'mood': current_mood,
+        'mood_score': current_mood_score,
+        'mood_icon': mood_icon,
+        'bmi': bmi,
+        'bmi_category': bmi_category,
+        'overall_wellness_score': overall_score,
         'wellness_tip': wellness_tip,
         'week_data': week_data
     }
 
 
+
+
+@app.route('/debug-bmi')
+def debug_bmi():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'login required'}), 401
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT height, weight FROM users WHERE email = ?', (user_email,))
+    profile_row = cur.fetchone()
+    conn.close()
+    
+    height_value = profile_row['height'] if profile_row and 'height' in profile_row else None
+    weight_value = profile_row['weight'] if profile_row and 'weight' in profile_row else None
+    
+    def parse_number(val, default=0.0):
+        if not val:
+            return default
+        import re
+        match = re.search(r'(\d+\.?\d*)', str(val).strip())
+        if match:
+            try:
+                return float(match.group(1))
+            except Exception:
+                pass
+        return default
+    
+    def parse_height(val):
+        if val is None or val == '' or val == '0':
+            return 0.0
+        val_str = str(val).strip().lower()
+        import re
+        numbers = re.findall(r'\d+\.?\d*', val_str)
+        if not numbers:
+            return 0.0
+        if 'cm' in val_str:
+            return float(numbers[0]) / 100.0
+        if 'in' in val_str or 'inch' in val_str or '"' in val_str:
+            return float(numbers[0]) * 0.0254
+        if 'ft' in val_str or 'feet' in val_str or "'" in val_str:
+            feet = float(numbers[0])
+            inches = float(numbers[1]) if len(numbers) > 1 else 0
+            return (feet * 12 + inches) * 0.0254
+        # Assume cm
+        return float(numbers[0]) / 100.0
+    
+    def parse_weight(val):
+        if val is None or val == '' or val == '0':
+            return 0.0
+        val_str = str(val).strip().lower()
+        import re
+        numbers = re.findall(r'\d+\.?\d*', val_str)
+        if not numbers:
+            return 0.0
+        num = float(numbers[0])
+        if 'lbs' in val_str or 'pounds' in val_str or 'lb' in val_str:
+            return num * 0.453592
+        return num  # assume kg
+    
+    height_m = parse_height(height_value)
+    weight_kg = parse_weight(weight_value)
+    
+    bmi = None
+    if height_m > 0 and weight_kg > 0:
+        bmi = round(weight_kg / (height_m * height_m), 1)
+    
+    return jsonify({
+        'raw_height': height_value,
+        'raw_weight': weight_value,
+        'height_m': height_m,
+        'weight_kg': weight_kg,
+        'bmi': bmi
+    })
 
 
 @app.route('/dashboard')
@@ -1809,6 +1994,41 @@ def edit_profile(user_id):
     return render_template('edit.html', user=user, first=first, today=today)
 
 
+@app.route('/assessment')
+def assessment():
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Please sign in to view your assessment.')
+        return redirect(url_for('index'))
+
+    # Fetch user profile data
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users WHERE email = ?', (user_email,))
+    user_row = cur.fetchone()
+    conn.close()
+
+    if not user_row:
+        flash('User not found.')
+        return redirect(url_for('dashboard'))
+
+    user = dict(user_row)
+    user['first_name'] = user['first']
+    user['last_name'] = user['last']
+    user['birthdate_display'] = user['birthdate']
+    user['gender'] = user.get('gender', 'Not Specified')
+    user['height_display'] = user.get('height', 'Not Set')
+    user['weight_display'] = user.get('weight', 'Not Set')
+
+    # Fetch mood and wellness data
+    mood_data = get_mood_wellness_data(user_email)
+
+    first = session.get('user_first')
+    today = datetime.now().strftime('%B %d, %Y')
+
+    return render_template('assessment.html', user=user, mood_data=mood_data, first=first, today=today)
+
+
 @app.route('/api/budget', methods=['GET'])
 def api_budget_get():
     user_email = session.get('user_email')
@@ -2431,4 +2651,6 @@ print("[STARTUP] Scheduled reminder worker thread started", flush=True)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Use a stable single-process run configuration for local development
+    # and avoid double worker threads from Flask autoreload.
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True, use_reloader=False)

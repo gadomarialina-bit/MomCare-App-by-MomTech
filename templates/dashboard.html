@@ -236,6 +236,8 @@
                         <p>Stress Level: <span class="font-bold text-[#5a8d26]">{{ mood_data.stress if mood_data else
                                 '5'
                                 }}/10</span></p>
+                        <p>BMI: {% if mood_data and mood_data.bmi %}<span class="font-bold">{{ mood_data.bmi }}</span> <small>({{ mood_data.bmi_category }})</small>{% else %}<span class="font-bold text-red-500">Not Set</span> <small><a href="{{ url_for('edit_profile', user_id=session.get('user_id')) }}" class="text-blue-500 underline">Update Profile</a></small>{% endif %}</p>
+                        <p>Overall Wellness Score: <span class="font-bold">{{ mood_data.overall_wellness_score if mood_data and mood_data.overall_wellness_score else 'N/A' }}/100</span></p>
                         <p class="font-bold text-[#104b0b]">Wellness Tip for the Day:</p>
                         <p class="italic text-sm text-gray-600 mt-1">"{{ mood_data.wellness_tip if mood_data else 'Take
                             a

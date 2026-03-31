@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Assessment - MomCare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .assessment-container {
+            width: 100%;
+            max-width: 1000px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .assessment-header {
+            background: #104b0b;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .assessment-content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #104b0b;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #5a8d26;
+            padding-bottom: 5px;
+        }
+
+        .detail-row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-row label {
+            font-weight: 500;
+            color: #374151;
+            min-width: 120px;
+        }
+
+        .detail-row .value {
+            font-weight: 400;
+            color: #111827;
+        }
+
+        .assessment-text {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #5a8d26;
+            margin-top: 15px;
+        }
+
+        .score-high {
+            color: #00e676;
+        }
+
+        .score-medium {
+            color: #ffc400;
+        }
+
+        .score-low {
+            color: #ff1744;
+        }
+    </style>
+</head>
+
+<body class="bg-[#a7d8e5] font-['Poppins']">
+    {% include 'navbar.html' %}
+
+    <main class="max-w-[1300px] mx-auto p-6 md:p-10">
+        <div class="assessment-container mx-auto">
+            <div class="assessment-header">Health & Wellness Assessment</div>
+
+            <div class="assessment-content">
+                <!-- Profile Information -->
+                <div class="section">
+                    <div class="section-title">Profile Information</div>
+                    <div class="detail-row">
+                        <label>Name:</label>
+                        <div class="value">{{ user.first_name }} {{ user.last_name }}</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Email:</label>
+                        <div class="value">{{ user.email }}</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Birth Date:</label>
+                        <div class="value">{{ user.birthdate_display }}</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Gender:</label>
+                        <div class="value">{{ user.gender }}</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Height:</label>
+                        <div class="value">{{ user.height_display }}</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Weight:</label>
+                        <div class="value">{{ user.weight_display }}</div>
+                    </div>
+                </div>
+
+                <!-- Current Wellness Status -->
+                <div class="section">
+                    <div class="section-title">Current Wellness Status</div>
+                    <div class="detail-row">
+                        <label>Current Mood:</label>
+                        <div class="value">
+                            {% if mood_data.mood == 'Happy' %}
+                            <i class="far fa-smile text-[#00e676]" title="Happy"></i> Happy
+                            {% elif mood_data.mood == 'Neutral' %}
+                            <i class="far fa-meh text-[#00b0ff]" title="Neutral"></i> Neutral
+                            {% elif mood_data.mood == 'Tired' %}
+                            <i class="far fa-frown text-[#ffc400]" title="Tired"></i> Tired
+                            {% elif mood_data.mood == 'Stressed' %}
+                            <i class="far fa-tired text-[#ff1744]" title="Stressed"></i> Stressed
+                            {% else %}
+                            <i class="far fa-meh text-[#00b0ff]" title="Neutral"></i> Not Logged
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Stress Level:</label>
+                        <div class="value">{{ mood_data.stress if mood_data else '5' }}/10</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>BMI:</label>
+                        <div class="value">{{ mood_data.bmi if mood_data and mood_data.bmi else 'Not Set' }} ({{ mood_data.bmi_category if mood_data and mood_data.bmi_category else 'Not Set' }})</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Overall Score:</label>
+                        <div class="value {% if mood_data and mood_data.overall_wellness_score >= 80 %}score-high{% elif mood_data and mood_data.overall_wellness_score >= 60 %}score-medium{% else %}score-low{% endif %}">
+                            {{ mood_data.overall_wellness_score if mood_data and mood_data.overall_wellness_score else 'N/A' }}/100
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Sleep:</label>
+                        <div class="value">{{ mood_data.sleep if mood_data else 'Not logged' }} hours</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Water Intake:</label>
+                        <div class="value">{{ mood_data.water if mood_data else 'Not logged' }} glasses</div>
+                    </div>
+                    <div class="detail-row">
+                        <label>Activity:</label>
+                        <div class="value">{{ mood_data.activity if mood_data and mood_data.activity else 'Not logged' }}</div>
+                    </div>
+                </div>
+
+                <!-- Assessment -->
+                <div class="section">
+                    <div class="section-title">Assessment & Recommendations</div>
+                    <div class="assessment-text">
+                        {% if mood_data and mood_data.overall_wellness_score %}
+                            {% if mood_data.overall_wellness_score >= 80 %}
+                                <strong>Excellent!</strong> You're doing great with your wellness. Keep up the good habits!
+                            {% elif mood_data.overall_wellness_score >= 60 %}
+                                <strong>Good progress!</strong> You're on the right track. Focus on areas that need improvement.
+                            {% else %}
+                                <strong>Room for improvement.</strong> Consider making some lifestyle changes to boost your wellness.
+                            {% endif %}
+                        {% else %}
+                            <strong>Start tracking!</strong> Begin logging your mood and wellness metrics to get personalized insights.
+                        {% endif %}
+                        <br><br>
+                        <strong>Today's Tip:</strong> {{ mood_data.wellness_tip if mood_data else 'Take a moment to breathe and assess your day.' }}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="text-center mt-8">
+                    <a href="{{ url_for('edit_profile', user_id=user['id']) }}" class="no-underline mr-4">
+                        <button class="px-6 py-3 bg-[#5a8d26] text-white rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
+                            Update Profile
+                        </button>
+                    </a>
+                    <a href="{{ url_for('mood') }}" class="no-underline">
+                        <button class="px-6 py-3 bg-[#fecc47] text-white rounded-full hover:opacity-90 transition-opacity font-bold border-none cursor-pointer">
+                            Log Wellness
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</body>
+
+</html>

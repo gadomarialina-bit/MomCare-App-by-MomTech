@@ -40,12 +40,12 @@
         <input name="gender" type="text" value="{{ user.gender }}" />
       </div>
       <div class="field">
-        <label>Height (cm)</label>
-        <input name="height" type="text" value="{{ user.height_display }}" />
+        <label>Height (cm or ft'in")</label>
+        <input name="height" type="text" value="{{ user.height_display }}" placeholder="e.g. 165 or 5'6&quot;" />
       </div>
       <div class="field">
         <label>Weight (kg)</label>
-        <input name="weight" type="text" value="{{ user.weight_display }}" />
+        <input name="weight" type="text" value="{{ user.weight_display }}" placeholder="e.g. 60" />
       </div>
 
       <hr style="margin:18px 0; border-top:1px solid #e5e7eb" />

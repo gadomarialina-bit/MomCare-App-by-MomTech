@@ -41,6 +41,16 @@
               }}</span></p>
         </div>
       </div>
+      {% elif request.endpoint == 'assessment' %}
+      <div class="flex items-center gap-6">
+        <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
+          class="h-20 w-auto" />
+        <div>
+          <h1 class="text-l lg:text-xl font-bold">Health Assessment</h1>
+          <p class="mt-1 text-sm opacity-90">Today: <span id="currentDateDisplay">{{ today or ''
+              }}</span></p>
+        </div>
+      </div>
       {% else %}
       <div class="flex items-center gap-6">
         <img src="{{ url_for('static', filename='images/momcare_logo_white.png') }}" alt="MomCare"
@@ -95,6 +105,9 @@
           </a>
           <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
             <i class="fas fa-chart-line text-green-900"></i><span>Dashboard</span>
+          </a>
+          <a href="{{ url_for('assessment') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
+            <i class="fas fa-clipboard-check text-green-900"></i><span>Health Assessment</span>
           </a>
           <a href="{{ url_for('tasks') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-50">
             <i class="fas fa-tasks text-green-900"></i><span>Daily Tasks</span>
