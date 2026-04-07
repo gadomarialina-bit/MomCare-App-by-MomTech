@@ -913,8 +913,6 @@ def get_mood_wellness_data(user_email: str):
     else:
         wellness_tip = 'Attention needed. Focus on regular sleep, proper hydration, gentle activity, and stress reduction. Consider consulting a health professional.'
 
-    wellness_tip += ' [' + '; '.join(ai_tips) + ']'
-
     if stress_val <= 3:
         stress_category = 'low'
     elif stress_val <= 7:
