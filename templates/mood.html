@@ -385,6 +385,10 @@
                             moodChart.data.datasets[0].backgroundColor = getMoodColors(result.week_data);
                             moodChart.update();
                         }
+                        if (result.wellness_tip) {
+                            const stressMsg = document.getElementById('stressMessage');
+                            if (stressMsg) stressMsg.textContent = '"' + result.wellness_tip + '"';
+                        }
                     }
                 } else {
                     console.error('Failed to update mood');
@@ -410,6 +414,10 @@
                 const result = await response.json();
                 if (result.success) {
                     console.log(`${metric} updated: ${value}`);
+                    if (result.wellness_tip) {
+                        const stressMsg = document.getElementById('stressMessage');
+                        if (stressMsg) stressMsg.textContent = '"' + result.wellness_tip + '"';
+                    }
                 }
             } catch (error) {
                 console.error('Error updating wellness:', error);
@@ -497,6 +505,10 @@
                             document.getElementById('sleepVal').innerHTML = `${sleepHours} <span class="text-sm font-normal">hours</span>`;
                             if (typeof updateSleepTip === 'function') updateSleepTip();
 
+                            if (result.wellness_tip) {
+                                const stressMsg = document.getElementById('stressMessage');
+                                if (stressMsg) stressMsg.textContent = '"' + result.wellness_tip + '"';
+                            }
                             closeSleepModal();
                             showToast();
                         } else {
@@ -531,6 +543,10 @@
                             document.getElementById('waterVal').innerHTML = `${waterGlasses} <span class="text-sm font-normal">/8 glasses</span>`;
                             if (typeof updateWaterTip === 'function') updateWaterTip();
 
+                            if (result.wellness_tip) {
+                                const stressMsg = document.getElementById('stressMessage');
+                                if (stressMsg) stressMsg.textContent = '"' + result.wellness_tip + '"';
+                            }
                             closeWaterModal();
                             showToast();
                         } else {
@@ -566,59 +582,11 @@
             const stressSlider = document.getElementById('stressSlider');
             const stressMessage = document.getElementById('stressMessage');
 
-            // Tips based on stress levels (Low: 1-3, Moderate: 4-7, High: 8-10)
-            const stressTipsData = {
-                low: [
-                    "Great job keeping calm! 🌿",
-                    "Feeling balanced is a superpower. ✨",
-                    "Enjoy this peaceful moment. 🌸",
-                    "You're doing great! Keep smiling. 😊"
-                ],
-                moderate: [
-                    "You're doing okay. Take a breath. ☕",
-                    "Stay steady, you've got this. 💪",
-                    "A short break might help recharge. 🔋",
-                    "Keep going, but don't forget to rest. 🛑"
-                ],
-                high: [
-                    "It's okay to pause and breathe. 💛",
-                    "Be kind to yourself right now. 🛡️",
-                    "One step at a time is enough. 👣",
-                    "Take a deep breath. You are strong. 🌟"
-                ]
-            };
-
-            function getStressTip(level) {
-                let tips;
-                if (level <= 3) {
-                    tips = stressTipsData.low;
-                } else if (level <= 7) {
-                    tips = stressTipsData.moderate;
-                } else {
-                    tips = stressTipsData.high;
-                }
-
-                // Deterministic selection matching server-side logic:
-                // (level + day_of_year) % length
-                const now = new Date();
-                const start = new Date(now.getFullYear(), 0, 0);
-                const diff = (now - start) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
-                const oneDay = 1000 * 60 * 60 * 24;
-                const dayOfYear = Math.floor(diff / oneDay);
-
-                return tips[(level + dayOfYear) % tips.length];
-            }
-
             if (stressSlider) {
                 stressSlider.addEventListener('input', function () {
                     const level = parseInt(this.value);
-                    if (stressMessage) {
-                        stressMessage.textContent = `"${getStressTip(level)}"`;
-                    }
                     updateWellness('stress', level);
                 });
-
-                // NO INITIALIZATION HERE - let the server-provided tip stay until user interacts
             }
 
             // Weekly mood chart with real data

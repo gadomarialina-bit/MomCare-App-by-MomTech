@@ -1716,18 +1716,21 @@ def update_mood():
         # After updating, fetch the fresh week_data to return to the frontend
         wellness_data = get_mood_wellness_data(user_email)
         week_data = wellness_data.get('week_data', [2, 2, 2, 2, 2, 2, 2])
+        wellness_tip = wellness_data.get('wellness_tip', 'Take a breath. ☕')
         
         success = True
     except Exception as e:
         print(f"Error updating mood: {e}")
         success = False
         week_data = [2, 2, 2, 2, 2, 2, 2]
+        wellness_tip = 'Take a breath. ☕'
     conn.close()
   
     return jsonify({
         'success': success,
         'mood': mood_val,
-        'week_data': week_data
+        'week_data': week_data,
+        'wellness_tip': wellness_tip
     })
 
 
@@ -1769,13 +1772,18 @@ def update_wellness():
 
         conn.commit()
         success = True
+        
+        # Fetch the updated wellness tip
+        wellness_data = get_mood_wellness_data(user_email)
+        wellness_tip = wellness_data.get('wellness_tip', 'Take a breath. ☕')
     except Exception as e:
         print(f"Error updating wellness: {e}")
         success = False
+        wellness_tip = 'Take a breath. ☕'
     finally:
         conn.close()
 
-    return jsonify({'success': success})
+    return jsonify({'success': success, 'wellness_tip': wellness_tip})
 
 
 @app.route('/logout')
