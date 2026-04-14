@@ -904,14 +904,75 @@ def get_mood_wellness_data(user_email: str):
     ai_tips.append('Activity: {}'.format(activity or 'Not logged'))
     ai_tips.append('Stress: {}/10'.format(stress_val))
 
-    if overall_score >= 80:
-        wellness_tip = 'Excellent progress! Keep up balanced meals, sleep, and movement, and maintain low stress levels.'
+    # Identify the weakest wellness area to provide a personalized, varied tip
+    scores_map = {
+        'sleep': sleep_score,
+        'water': water_score,
+        'activity': activity_score,
+        'stress': stress_score
+    }
+    weakest_factor = min(scores_map, key=scores_map.get)
+    
+    import random
+    
+    # Ensure the tip is consistent for the user on this day and score
+    random.seed(f"{user_email}_{today_date}_{overall_score}_{weakest_factor}")
+
+    # Granular Evaluations (6 scoring tiers)
+    if overall_score >= 90:
+        eval_prefixes = ['Outstanding wellness!', 'Exceptional work!', 'You are thriving!']
+    elif overall_score >= 80:
+        eval_prefixes = ['Excellent progress!', 'Great consistency!', 'Looking very good!']
+    elif overall_score >= 70:
+        eval_prefixes = ['Good job!', 'Solid effort.', 'You are on the right track.']
     elif overall_score >= 60:
-        wellness_tip = 'Good job so far. Small adjustments in sleep and hydration can raise your wellness score.'
+        eval_prefixes = ['Fair effort.', 'Making progress.', 'Some fine-tuning needed.']
     elif overall_score >= 40:
-        wellness_tip = 'Fair effort. Try improving one area at a time: add 10-20 minutes of activity or 1 extra glass of water.'
+        eval_prefixes = ['Needs improvement.', 'Room for growth.', 'Let us focus a bit more.']
     else:
-        wellness_tip = 'Attention needed. Focus on regular sleep, proper hydration, gentle activity, and stress reduction. Consider consulting a health professional.'
+        eval_prefixes = ['Action required.', 'Please prioritize your well-being.', 'Take a step back to care for yourself.']
+
+    prefix = random.choice(eval_prefixes)
+
+    if overall_score >= 90:
+        good_tips = [
+            'Keep up the healthy habits.',
+            'Maintain your routine for optimal wellness.',
+            'You are balancing things perfectly.'
+        ]
+        wellness_tip = f"{prefix} {random.choice(good_tips)}"
+    else:
+        if weakest_factor == 'sleep':
+            sleep_tips = [
+                'Try going to bed 15 minutes earlier tonight.',
+                'Avoid screens for an hour before bed.',
+                'A consistent bedtime routine can greatly improve your rest.'
+            ]
+            wellness_tip = f"{prefix} {random.choice(sleep_tips)}"
+        elif weakest_factor == 'water':
+            water_tips = [
+                'Try drinking a full glass of water right now!',
+                'Keep a reusable water bottle near you.',
+                'Sip water every hour to stay hydrated.'
+            ]
+            wellness_tip = f"{prefix} {random.choice(water_tips)}"
+        elif weakest_factor == 'activity':
+            activity_tips = [
+                'Adding 10 minutes of light stretching can help.',
+                'Try taking a short walk outside.',
+                'Consider a quick 15-minute home workout.'
+            ]
+            wellness_tip = f"{prefix} {random.choice(activity_tips)}"
+        else: # stress
+            stress_tips = [
+                'Try taking 5 minutes for deep breathing.',
+                'Consider a quick meditation or a warm bath.',
+                'Step away from work for a brief mental reset.'
+            ]
+            wellness_tip = f"{prefix} {random.choice(stress_tips)}"
+
+    # Reset the random seed so we don't mess up other randomized functions
+    random.seed()
 
     if stress_val <= 3:
         stress_category = 'low'
@@ -2450,15 +2511,6 @@ def api_groceries_delete(item_id):
 
 
 def send_login_email(logged_in_email, first_name):
-    # This function sends the login alert to 5 different admin emails
-    admin_emails = [
-        "kimmy.guiriba46@gmail.com",
-        "gadomarialina@gmail.com",
-        "janjasjamjen@gmail.com",
-        "momcare.admin4@example.com",
-        "momcare.admin5@example.com"
-    ]
-    
     # Notice: To stop simulating and actually send emails, you MUST provide real Gmail credentials here.
     # We will use smtp.gmail.com as the server.
     smtp_server = "smtp.gmail.com"
@@ -2471,9 +2523,9 @@ def send_login_email(logged_in_email, first_name):
     msg = EmailMessage()
     msg['Subject'] = "Security Alert: New Login to MomCare"
     msg['From'] = smtp_user
-    msg['To'] = ", ".join(admin_emails)
+    msg['To'] = logged_in_email
     login_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    msg.set_content(f"Hello Admin,\n\nA new login was detected on MomCare.\n\nUser: {first_name} ({logged_in_email})\nTime: {login_time}\n\nBest regards,\nMomCare Security")
+    msg.set_content(f"Hello {first_name},\n\nA new login to your MomCare account was detected.\n\nTime: {login_time}\n\nIf this wasn't you, please secure your account immediately.\n\nBest regards,\nMomCare Security")
 
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
@@ -2482,7 +2534,7 @@ def send_login_email(logged_in_email, first_name):
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
         server.quit()
-        print(f"[LOGIN EMAIL SENT] Successfully sent login alert to {len(admin_emails)} users for newly logged in user {logged_in_email}.", flush=True)
+        print(f"[LOGIN EMAIL SENT] Successfully sent login alert to {logged_in_email}.", flush=True)
     except Exception as e:
         print(f"\n[LOGIN EMAIL FAILED] Could not send real email because SMTP credentials are not valid! Error: {e}\n⚠️ Please edit app.py to include your real Gmail App Password!\n", flush=True)
 
