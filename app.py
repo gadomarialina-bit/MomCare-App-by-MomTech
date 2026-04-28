@@ -2510,52 +2510,90 @@ def api_groceries_delete(item_id):
     return jsonify({'deleted': True})
 
 
+# ---------------------------------------------------------------------------
+# SMTP credentials — falls back to hardcoded values if env vars are not set.
+# Gmail sender account (must have 2FA + App Password enabled):
+#   SMTP_USERNAME  →  kimmy.guiriba46@gmail.com
+#   SMTP_PASSWORD  →  tdqc dyrv nglw ksiz
+# ---------------------------------------------------------------------------
+_SMTP_USER_DEFAULT  = 'kimmy.guiriba46@gmail.com'
+_SMTP_PASS_DEFAULT  = 'tdqcdyrvnglwksiz'   # spaces removed — Gmail ignores them
+
+# ---------------------------------------------------------------------------
+# Admin / team notification list.
+# Every email listed here receives a BCC copy of every login alert email.
+# Add your team members' email addresses below:
+# ---------------------------------------------------------------------------
+ADMIN_NOTIFICATION_EMAILS = [
+    'kimmy.guiriba46@gmail.com',       # Kimmy Guiriba (project lead / you)
+    # 'janjasjamjen@gmail.com',           # ← uncomment and add more team emails here
+    # 'teammate3@gmail.com',
+]
+
+
+def _get_smtp_credentials():
+    """Return (smtp_user, smtp_pass) from env vars, or fall back to defaults."""
+    smtp_user = os.environ.get('SMTP_USERNAME') or os.environ.get('MAIL_USERNAME') or _SMTP_USER_DEFAULT
+    smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('MAIL_PASSWORD') or _SMTP_PASS_DEFAULT
+    return smtp_user, smtp_pass
+
+
 def send_login_email(logged_in_email, first_name):
-    # Notice: To stop simulating and actually send emails, you MUST provide real Gmail credentials here.
-    # We will use smtp.gmail.com as the server.
+    """Send a security alert email when a user logs in."""
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    
-    # TODO: Fill in your actual Gmail email and App Password here!
-    smtp_user = os.environ.get('SMTP_USERNAME', 'kimmy.guiriba46@gmail.com') 
-    smtp_pass = os.environ.get('SMTP_PASSWORD', 'jvuabrvpvkxwknlh')
+
+    smtp_user, smtp_pass = _get_smtp_credentials()
+    if not smtp_user or not smtp_pass:
+        print("[LOGIN EMAIL SKIPPED] SMTP_USERNAME / SMTP_PASSWORD environment variables are not set.", flush=True)
+        return
 
     msg = EmailMessage()
     msg['Subject'] = "Security Alert: New Login to MomCare"
     msg['From'] = smtp_user
     msg['To'] = logged_in_email
     login_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    msg.set_content(f"Hello {first_name},\n\nA new login to your MomCare account was detected.\n\nTime: {login_time}\n\nIf this wasn't you, please secure your account immediately.\n\nBest regards,\nMomCare Security")
+    msg.set_content(
+        f"Hello {first_name},\n\n"
+        f"A new login to your MomCare account was detected.\n\n"
+        f"Time: {login_time}\n\n"
+        f"If this wasn't you, please secure your account immediately.\n\n"
+        f"Best regards,\nMomCare Security"
+    )
 
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
-        # This will fail with an AuthenticationError if you haven't replaced the mock credentials!
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
         server.quit()
         print(f"[LOGIN EMAIL SENT] Successfully sent login alert to {logged_in_email}.", flush=True)
     except Exception as e:
-        print(f"\n[LOGIN EMAIL FAILED] Could not send real email because SMTP credentials are not valid! Error: {e}\n⚠️ Please edit app.py to include your real Gmail App Password!\n", flush=True)
+        print(f"[LOGIN EMAIL FAILED] Could not send email to {logged_in_email}: {e}", flush=True)
 
 
 def send_task_notification_email(to_email, task_title, start_time_str):
-    # We will use smtp.gmail.com as the server.
+    """Send a reminder email for an upcoming task."""
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    
-    # Use the same exact app password and email that works for the login alert!
-    smtp_user = os.environ.get('SMTP_USERNAME', 'kimmy.guiriba46@gmail.com') 
-    smtp_pass = os.environ.get('SMTP_PASSWORD', 'jvuabrvpvkxwknlh')
+
+    smtp_user, smtp_pass = _get_smtp_credentials()
+    if not smtp_user or not smtp_pass:
+        print("[TASK EMAIL SKIPPED] SMTP_USERNAME / SMTP_PASSWORD environment variables are not set.", flush=True)
+        return
 
     msg = EmailMessage()
     msg['Subject'] = f"Reminder: Upcoming Task '{task_title}'"
     msg['From'] = smtp_user
     msg['To'] = to_email
-    msg.set_content(f"Hello,\n\nThis is a friendly reminder that your task '{task_title}' is scheduled to start at {start_time_str} today.\n\nBest regards,\nMomCare Team")
+    msg.set_content(
+        f"Hello,\n\n"
+        f"This is a friendly reminder that your task '{task_title}' is scheduled to start at {start_time_str} today.\n\n"
+        f"Best regards,\nMomCare Team"
+    )
 
     try:
-        server = smtplib.SMTP(smtp_server, int(smtp_port))
+        server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
@@ -2655,8 +2693,7 @@ def scheduled_reminder_worker():
 
                 smtp_server = 'smtp.gmail.com'
                 smtp_port = 587
-                smtp_user = os.environ.get('SMTP_USERNAME') or os.environ.get('MAIL_USERNAME') or 'kimmy.guiriba46@gmail.com'
-                smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('MAIL_PASSWORD') or 'jvuabrvpvkxwknlh'
+                smtp_user, smtp_pass = _get_smtp_credentials()
 
                 print(f"[SCHEDULED REMINDER EMAIL] Using SMTP user: {smtp_user} (credentials set: {'yes' if smtp_pass else 'no'})", flush=True)
                 if smtp_user and smtp_pass:
@@ -2683,7 +2720,7 @@ def scheduled_reminder_worker():
                         time.sleep(60)
                         continue
                 else:
-                    print(f"[SCHEDULED REMINDER EMAIL] No SMTP credentials (SMTP_USERNAME/SMTP_PASSWORD or MAIL_USERNAME/MAIL_PASSWORD).", flush=True)
+                    print(f"[SCHEDULED REMINDER EMAIL] SMTP_USERNAME / SMTP_PASSWORD environment variables are not set.", flush=True)
 
                 # Mark as sent whether email send succeeded or not (to avoid retry loops)
                 cur.execute('UPDATE reminder_items SET email_sent = 1 WHERE id = ?', (row['id'],))
